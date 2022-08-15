@@ -1,0 +1,32 @@
+cabal-version:      2.4
+name:               verify-rt
+version:            0.1.0.0
+license:            MIT
+license-file:       LICENSE
+author:             octalsrc
+maintainer:         contact@octalsrc.org
+extra-source-files: CHANGELOG.md
+
+library
+    exposed-modules:  ALang, ALang.Example, ALang.Prelude, Compile, Service, Symbol, ValDomain
+
+    -- Modules included in this library but not exported.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.15.1.0
+                    , sbv
+                    , containers
+                    , mtl
+                    , microlens-platform
+                    , lattices 
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+test-suite verify-rt-test
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MyLibTest.hs
+    build-depends:    base ^>=4.15.1.0

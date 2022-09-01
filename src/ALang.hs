@@ -101,7 +101,7 @@ symbolize
   -> Symbolic (Sy d, Sy b)
 symbolize m d a = case m of
   Id -> return (d, a)
-  Fun _ -> (,) d <$> exists_
+  Fun _ -> (,) d <$> forall_
   Const x -> return (d, literal $ toRep x)
   PipeRL ml mr -> do
     (d', b) <- symbolize mr d a

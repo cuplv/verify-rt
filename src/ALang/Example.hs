@@ -7,10 +7,6 @@ import Data.SBV
 nonNegative :: (Avs a, Avs b) => TSpec Int a b
 nonNegative = invarS $ \d1 d2 -> (d1 .>= 0) .=> (d2 .>= 0)
 
-{-| The 'Int' input is non-negative. -}
-natInput :: (Avs d, Avs b) => TSpec d Int b
-natInput = inputS $ \a -> a .>= 0
-
 {-| Subtract the input amount from the state, if the amount is
   available. -}
 takeStock :: ALang Int Int (Either String Int)
@@ -27,6 +23,7 @@ takeStock =
 badTakeStock :: ALang Int Int (Either String Int)
 badTakeStock =
   iteA queryAtLeast
+      -- Subtract 1 more than the input value.
   >?> plus 1 >>> effectSub
   >!> Const "Not enough stock."
 

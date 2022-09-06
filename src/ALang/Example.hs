@@ -62,37 +62,26 @@ queryAtLeast = SvTerm SvGE
 
 -- Map insertion example
 
--- newEntries
---   :: (Ord (Rep k), Avs k, Avs w, Avs a, Avs b)
---   => Integer 
---   -> TSpec (Map k w) a b
--- newEntries i = prePostS $ \pre post -> do
---   n <- forall_
---   return $ hasSize pre n .=> hasSize post (n + literal i)
-
 noOverwrite
   :: (Ord (Rep k), Avs k, Avs w, Avs a, Avs b)
   => TSpec (Map k w) a b
-noOverwrite = invarS $ \m -> forAll ["i1","i2"] $ \i1 i2 ->
-  -- i1 <- forall "ix1"
-  -- i2 <- forall "ix2"
-  (i1 .>= 0 .&& i1 .< SList.length m
-   .&& i2 .>= 0 .&& i2 .< SList.length m
-   .&& i1 ./= i2)
-  .=> (SList.elemAt m i1 ./= SList.elemAt m i2)
+noOverwrite = prePostS $ \m1 m2 -> do
+  i1 <- exists "i1"
+  i2 <- exists "i2"
+  i3 <- forall "i3"
+  i4 <- forall "i4"
 
-test3 = prove $
-  let m = literal [1::Integer,1]
-      a = forAll_ $ do
-            i1 <- free "ix1"
-            i2 <- free "ix2"
-            return $ (i1 .>= 0 .&& i1 .< SList.length m
-                      .&& i2 .>= 0 .&& i2 .< SList.length m
-                      .&& i1 ./= i2)
-                     .=> (SList.elemAt m i1 ./= SList.elemAt m i2)
-  in do r1 <- a 
-        -- r2 <- forAll ["x"] $ \x -> (x :: SInteger) .> 2
-        return (sNot r1)
+  let p1 = 0 .<= i1 .&& i1 .< SList.length m1
+           .&& 0 .<= i2 .&& i2 .< SList.length m1
+           .&& i1 ./= i2
+           .&& SList.elemAt m1 i1 .== SList.elemAt m1 i2
+
+      p2 = (0 .<= i3 .&& i3 .< SList.length m2
+           .&& 0 .<= i4 .&& i4 .< SList.length m2
+           .&& i3 ./= i4)
+           .=> SList.elemAt m2 i3 ./= SList.elemAt m2 i4
+
+  return $ p1 .|| p2
 
 type Customer = String
 
@@ -128,6 +117,7 @@ badReportSale cust =
                        ++ " products were purchased by"
                        ++ c
 
+-- Just hangs while trying to prove the correct transaction safe...
 test2 = do
   r1 <- reportSale "Alice" `checkSpec` noOverwrite
   r2 <- badReportSale "Alice" `checkSpec` noOverwrite

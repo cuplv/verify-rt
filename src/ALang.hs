@@ -145,7 +145,6 @@ checkSpec tr (TSpec m) = do
   r <- prove $ \d1 a -> do
     (d2, b) <- symbolize tr d1 a
     m d1 a d2 b
-  print r
   case r of
     ThmResult (Unsatisfiable _ _) -> return True
     ThmResult (Satisfiable _ _) -> return False

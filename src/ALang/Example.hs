@@ -66,21 +66,21 @@ noOverwrite
   :: (Ord (Rep k), Avs k, Avs w, Avs a, Avs b)
   => TSpec (Map k w) a b
 noOverwrite = prePostS $ \m1 m2 -> do
-  i1 <- exists "i1"
-  i2 <- exists "i2"
-  i3 <- forall "i3"
-  i4 <- forall "i4"
+  k1 <- exists "k1"
+  -- k1 appears in m1, and appears again in the suffix that comes
+  -- after that first appearance.
+  let p1 = SList.elem k1 m1
+           .&& SList.elem k1 (SList.drop (SList.indexOf (SList.singleton k1) m1 + 1) m1)
+  -- k2, if it appears in m2, does not appear in the suffix that comes
+  -- after that first appearance.
+  k2 <- forall "k2"
+  let p2 = SList.elem k2 m2
+           .=> SList.notElem k2 (SList.drop (SList.indexOf m2 (SList.singleton k2) + 1) m2)
 
-  let p1 = 0 .<= i1 .&& i1 .< SList.length m1
-           .&& 0 .<= i2 .&& i2 .< SList.length m1
-           .&& i1 ./= i2
-           .&& SList.elemAt m1 i1 .== SList.elemAt m1 i2
-
-      p2 = (0 .<= i3 .&& i3 .< SList.length m2
-           .&& 0 .<= i4 .&& i4 .< SList.length m2
-           .&& i3 ./= i4)
-           .=> SList.elemAt m2 i3 ./= SList.elemAt m2 i4
-
+  -- p1 is true when an overwrite has already occurred in the
+  -- pre-state.  p2 is true when the post-state contains no
+  -- overwrites.  We are only obligated to show p2 when the pre-state
+  -- satisfies the invariant---that is, when p1 is false.
   return $ p1 .|| p2
 
 type Customer = String
@@ -117,7 +117,6 @@ badReportSale cust =
                        ++ " products were purchased by"
                        ++ c
 
--- Just hangs while trying to prove the correct transaction safe...
 test2 = do
   r1 <- reportSale "Alice" `checkSpec` noOverwrite
   r2 <- badReportSale "Alice" `checkSpec` noOverwrite

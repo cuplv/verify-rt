@@ -30,6 +30,8 @@ data ALang v a b where
   Split :: (Avs a) => ALang v a (a,a)
   TakeL :: (Avs a1, Avs a2) => ALang v (a1,a2) a1
   TakeR :: (Avs a1, Avs a2) => ALang v (a1,a2) a2
+  AssumeL :: (Avs a1, Avs a2) => ALang v (Either a1 a2) a1
+  AssumeR :: (Avs a1, Avs a2) => ALang v (Either a1 a2) a2
   Join :: (Avs a) => ALang v (Either a a) a
   Flip :: (Avs a1, Avs a2) => ALang v (a1,a2) (a2,a1)
   DistL
@@ -119,6 +121,8 @@ symbolize m d a = case m of
   Split -> return (d, tuple (a,a))
   TakeL -> return (d, _1 a)
   TakeR -> return (d, _2 a)
+  AssumeL -> return (d, fromLeft a)
+  AssumeR -> return (d, fromRight a)
   Join -> return (d, Data.SBV.Either.either id id a)
   Flip -> return (d, tuple (_2 a, _1 a))
   DistL -> 
@@ -137,12 +141,11 @@ symbolize m d a = case m of
     m d a
 
 checkSpec :: (Service v, Avs a, Avs b) => ALang v a b -> TSpec (SvState v) a b -> IO Bool
-checkSpec tr (TSpec i m) = do
+checkSpec tr (TSpec m) = do
   r <- prove $ \d1 a -> do
     (d2, b) <- symbolize tr d1 a
-    let ps = i a
-        ms = m d1 a d2 b
-    return (ps .=> ms)
+    m d1 a d2 b
+  print r
   case r of
     ThmResult (Unsatisfiable _ _) -> return True
     ThmResult (Satisfiable _ _) -> return False

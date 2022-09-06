@@ -1,13 +1,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Service where
 
 import Symbol
 
+import Data.Map (Map)
 import Data.SBV
 import Data.SBV.Either
+import Data.SBV.Set
+import Data.SBV.Tuple
+import qualified Data.SBV.List as SList
 
 {-| 'Service' terms interact with the state, querying consistent
   information about it and modifying it.
@@ -44,3 +49,20 @@ instance Service IntSv where
       return (d, ite (d .>= b .&& b .>= a) (sRight b) (sLeft su))
 
     SvAdd -> SSpec $ \d a -> return (d + a, a)
+
+data MapSv k w a b where
+  SvFreshKey :: MapSv k w () k
+  SvInsert :: MapSv k w (k,w) ()
+
+instance (Ord (Rep k), Avs k, Avs w) => Service (MapSv k w) where
+  type SvState (MapSv k w) = Map k w
+
+  svSymbol v = case v of
+    SvFreshKey -> SSpec $ \d a -> do
+      -- k <- forall "freshKey"
+      -- return (d, ite (SList.notElem k d) (sRight k) (sLeft su))
+      k <- forall "freshKey"
+      constrain $ SList.notElem k d
+      return (d, k)
+    SvInsert -> SSpec $ \d a -> do
+      return (_1 a SList..: d, su) 

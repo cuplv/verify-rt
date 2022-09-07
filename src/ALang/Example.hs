@@ -92,6 +92,7 @@ tailAfter k m = SList.drop (SList.indexOf m (SList.singleton k) + 1) m
 
 seenTwice k m = SList.elem k m .&& SList.elem k (tailAfter k m)
 
+-- reportSale and reportSale2 are safe, but badReportSale is not safe.
 test2 = do
   r1 <- reportSale "Alice" `checkSpec` noOverwrite1
   r2 <- reportSale2 "Alice" `checkSpec` noOverwrite1
@@ -99,14 +100,27 @@ test2 = do
   return (r1 && r2 && not r3)
 
 {-| Insert a report of a sale into a map, using a unique key to avoid
-  overwriting existing reports. -}
+  overwriting existing reports.
+
+  The input is the ordered product quantity, which goes into the
+  report.
+-}
 reportSale
   :: Customer
   -> ALang (MapSv ReportId String) Int ReportId
 reportSale cust =
+  -- Pass the input quantity to the 'mkReport' function, which creates
+  -- a String report.  Pair this with a generated map key that is
+  -- guaranteed to be unique.
   (freshKey &&& Fun mkReport)
+  -- Pass the key/value pair to 'insertKV', which inserts it into the
+  -- Map state.  'passThru' carries the key/value pair forward to the
+  -- next step.
   >>> passThru insertKV
+  -- Take just the key from the key/value pair.  This is our return
+  -- value, a 'ReportId' (which is just an 'Int').
   >>> TakeL
+
   where mkReport n = show n
                      ++ " products were purchased by"
                      ++ cust
@@ -117,6 +131,8 @@ reportSale2
   :: Customer
   -> ALang (MapSv ReportId String) Int (ReportId,ReportId)
 reportSale2 cust =
+  -- Pass the input quantity to two instances of 'reportSale',
+  -- collecting their returned keys as a pair.
   reportSale cust &&& reportSale cust
 
 {-| Insert a report using the hard-coded key @1@.  There is no guarantee
@@ -125,9 +141,11 @@ badReportSale
   :: Customer
   -> ALang (MapSv ReportId String) Int ReportId
 badReportSale cust =
+  -- Const 1 instead of freshKey.
   (Const 1 &&& Fun mkReport)
   >>> passThru insertKV
   >>> TakeL
+
   where mkReport n = show n
                      ++ " products were purchased by"
                      ++ cust

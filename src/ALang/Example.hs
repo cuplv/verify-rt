@@ -48,76 +48,99 @@ iteA
   -> ALang v a (Either a a)
 iteA a = Split >>> secondA a >>> DistL >>> ASum TakeL TakeL
 
+{-| Replace a term's output with it's input, so that the input can be
+  used again.  The term's actual output is ignored. -}
+passThru :: (Avs a, Avs b) => ALang v a b -> ALang v a a
+passThru a = Split >>> secondA a >>> TakeL
+
 -- The following convenience terms wrap primitive IntSV terms defined
 -- in ./src/Service.hs
 
 effectAdd :: ALang IntSv Int Int
-effectAdd = SvTerm SvAdd
+effectAdd = passThru $ SvTerm SvAdd
 
 effectSub :: ALang IntSv Int Int
-effectSub = VdTerm Negate >>> SvTerm SvAdd >>> VdTerm Negate
+effectSub = passThru $ VdTerm Negate >>> SvTerm SvAdd
 
 queryAtLeast :: ALang IntSv Int (Either () Int)
 queryAtLeast = SvTerm SvGE
 
+
 -- Map insertion example
 
-noOverwrite
+{-| A limited safety condition ensuring uniqueness of keys added to a
+  map.
+
+  The map is modeled as a list of keys, representing the history of
+  key-insertions on the map.  It every key in the history is unique,
+  it means that no entries have been overwritten.
+
+  Rather than assume the pre-condition that no overwrites have
+  occurred in the past, it assumes the stronger pre-condition that at
+  most one key has been inserted in the past.  The solver seemed
+  unable to terminate when the weaker pre-condition was used.
+-}
+noOverwrite1
   :: (Ord (Rep k), Avs k, Avs w, Avs a, Avs b)
   => TSpec (Map k w) a b
-noOverwrite = prePostS $ \m1 m2 -> do
-  k1 <- exists "k1"
-  -- k1 appears in m1, and appears again in the suffix that comes
-  -- after that first appearance.
-  let p1 = SList.elem k1 m1
-           .&& SList.elem k1 (SList.drop (SList.indexOf (SList.singleton k1) m1 + 1) m1)
-  -- k2, if it appears in m2, does not appear in the suffix that comes
-  -- after that first appearance.
-  k2 <- forall "k2"
-  let p2 = SList.elem k2 m2
-           .=> SList.notElem k2 (SList.drop (SList.indexOf m2 (SList.singleton k2) + 1) m2)
+noOverwrite1 = prePostS $ \m1 m2 -> do
+  constrain $ SList.length m1 .<= 1
+  k <- forall "k"
+  return $ sNot (seenTwice k m2)
 
-  -- p1 is true when an overwrite has already occurred in the
-  -- pre-state.  p2 is true when the post-state contains no
-  -- overwrites.  We are only obligated to show p2 when the pre-state
-  -- satisfies the invariant---that is, when p1 is false.
-  return $ p1 .|| p2
+tailAfter k m = SList.drop (SList.indexOf m (SList.singleton k) + 1) m
+
+seenTwice k m = SList.elem k m .&& SList.elem k (tailAfter k m)
+
+test2 = do
+  r1 <- reportSale "Alice" `checkSpec` noOverwrite1
+  r2 <- reportSale2 "Alice" `checkSpec` noOverwrite1
+  r3 <- badReportSale "Alice" `checkSpec` noOverwrite1
+  return (r1 && r2 && not r3)
+
+{-| Insert a report of a sale into a map, using a unique key to avoid
+  overwriting existing reports. -}
+reportSale
+  :: Customer
+  -> ALang (MapSv ReportId String) Int ReportId
+reportSale cust =
+  (freshKey &&& Fun mkReport)
+  >>> passThru insertKV
+  >>> TakeL
+  where mkReport n = show n
+                     ++ " products were purchased by"
+                     ++ cust
+
+{-| Insert two reports for the same customer and quantity.  The two
+  reports get distinct unique keys. -}
+reportSale2
+  :: Customer
+  -> ALang (MapSv ReportId String) Int (ReportId,ReportId)
+reportSale2 cust =
+  reportSale cust &&& reportSale cust
+
+{-| Insert a report using the hard-coded key @1@.  There is no guarantee
+  that this key will be unique. -}
+badReportSale
+  :: Customer
+  -> ALang (MapSv ReportId String) Int ReportId
+badReportSale cust =
+  (Const 1 &&& Fun mkReport)
+  >>> passThru insertKV
+  >>> TakeL
+  where mkReport n = show n
+                     ++ " products were purchased by"
+                     ++ cust
+
+
+-- Helper definitions for reportSale
 
 type Customer = String
 
 type ReportId = Int
 
-reportSale
-  :: Customer
-  -> ALang (MapSv ReportId String) Int ReportId
-reportSale cust =
-  Split
-  >>> ATimes (Const () >>> SvTerm SvFreshKey)
-             (Fun $ mkReport cust)
-  >>> Split
-  >>> ATimes TakeL
-             (SvTerm SvInsert)
-  >>> TakeL
-  where mkReport c n = show n
-                       ++ " products were purchased by"
-                       ++ c
+freshKey :: (Ord (Rep k), Avs k, Avs w, Avs a) => ALang (MapSv k w) a k
+freshKey = Const () >>> SvTerm SvFreshKey
 
-badReportSale
-  :: Customer
-  -> ALang (MapSv ReportId String) Int ReportId
-badReportSale cust =
-  Split
-  >>> ATimes (Const 1)
-             (Fun $ mkReport cust)
-  >>> Split
-  >>> ATimes TakeL
-             (SvTerm SvInsert)
-  >>> TakeL
-  where mkReport c n = show n
-                       ++ " products were purchased by"
-                       ++ c
-
-test2 = do
-  r1 <- reportSale "Alice" `checkSpec` noOverwrite
-  r2 <- badReportSale "Alice" `checkSpec` noOverwrite
-  return (r1 && not r2)
+insertKV :: (Ord (Rep k), Avs k, Avs w) => ALang (MapSv k w) (k,w) ()
+insertKV = SvTerm SvInsert

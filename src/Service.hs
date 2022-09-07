@@ -37,7 +37,7 @@ data IntSv a b where
 
   {-| Add the input value to the store.  This can also be used to
   subtract, by passing a negative input value. -}
-  SvAdd :: IntSv Int Int
+  SvAdd :: IntSv Int ()
 
 instance Service IntSv where
   type SvState IntSv = Int
@@ -48,7 +48,7 @@ instance Service IntSv where
       b <- forall_
       return (d, ite (d .>= b .&& b .>= a) (sRight b) (sLeft su))
 
-    SvAdd -> SSpec $ \d a -> return (d + a, a)
+    SvAdd -> SSpec $ \d a -> return (d + a, su)
 
 data MapSv k w a b where
   SvFreshKey :: MapSv k w () k
@@ -59,8 +59,6 @@ instance (Ord (Rep k), Avs k, Avs w) => Service (MapSv k w) where
 
   svSymbol v = case v of
     SvFreshKey -> SSpec $ \d a -> do
-      -- k <- forall "freshKey"
-      -- return (d, ite (SList.notElem k d) (sRight k) (sLeft su))
       k <- forall "freshKey"
       constrain $ SList.notElem k d
       return (d, k)

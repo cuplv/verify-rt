@@ -48,6 +48,13 @@ data ALang v a b where
 (>>>) :: (Avs a, Avs b, Avs c) => ALang v a b -> ALang v b c -> ALang v a c
 (>>>) = flip PipeRL
 
+(&&&)
+  :: (Avs a, Avs b1, Avs b2)
+  => ALang v a b1
+  -> ALang v a b2
+  -> ALang v a (b1,b2)
+(&&&) a1 a2 = Split >>> ATimes a1 a2
+
 leftA 
   :: (Avs a1, Avs a2, Avs b1) 
   => ALang v a1 b1
@@ -142,7 +149,9 @@ symbolize m d a = case m of
 
 checkSpec :: (Service v, Avs a, Avs b) => ALang v a b -> TSpec (SvState v) a b -> IO Bool
 checkSpec tr (TSpec m) = do
-  r <- prove $ \d1 a -> do
+  r <- prove $ do
+    d1 <- forall_
+    a <- forall_
     (d2, b) <- symbolize tr d1 a
     m d1 a d2 b
   case r of

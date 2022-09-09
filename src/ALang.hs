@@ -12,59 +12,62 @@ import Data.SBV
 import Data.SBV.Tuple
 import Data.SBV.Either
 
-data ALang v a b where
-  Id :: (Avs a) => ALang v a a
-  Fun :: (Avs a, Avs b) => (a -> b) -> ALang v a b
-  Const :: (Avs b) => b -> ALang v a b
+data ALang a b where
+  Id :: (Avs a) => ALang a a
+  Fun :: (Avs a, Avs b) => (a -> b) -> ALang a b
+  Const :: (Avs b) => b -> ALang () b
   PipeRL
     :: (Avs a, Avs b, Avs c)
-    => ALang v b c -> ALang v a b -> ALang v a c
+    => ALang b c -> ALang a b -> ALang a c
   ATimes
     :: (Avs a1, Avs b1, Avs a2, Avs b2)
-    => ALang v a1 b1 -> ALang v a2 b2 -> ALang v (a1,a2) (b1,b2)
+    => ALang a1 b1 -> ALang a2 b2 -> ALang (a1,a2) (b1,b2)
   ASum
     :: (Avs a1, Avs b1, Avs a2, Avs b2)
-    => ALang v a1 b1
-    -> ALang v a2 b2
-    -> ALang v (Either a1 a2) (Either b1 b2)
-  Split :: (Avs a) => ALang v a (a,a)
-  TakeL :: (Avs a1, Avs a2) => ALang v (a1,a2) a1
-  TakeR :: (Avs a1, Avs a2) => ALang v (a1,a2) a2
-  AssumeL :: (Avs a1, Avs a2) => ALang v (Either a1 a2) a1
-  AssumeR :: (Avs a1, Avs a2) => ALang v (Either a1 a2) a2
-  Join :: (Avs a) => ALang v (Either a a) a
-  Flip :: (Avs a1, Avs a2) => ALang v (a1,a2) (a2,a1)
-  DistL
+    => ALang a1 b1
+    -> ALang a2 b2
+    -> ALang (Either a1 a2) (Either b1 b2)
+
+  Split :: (Avs a) => ALang a (a,a)
+  Flip :: (Avs a1, Avs a2) => ALang (a1,a2) (a2,a1)
+  Take :: (Avs a1, Avs a2) => ALang (a1,a2) a1
+
+  Alt :: (Avs a1, Avs a2) => ALang a1 (Either a1 a2)
+  Swap :: (Avs a1, Avs a2) => ALang (Either a1 a2) (Either a2 a1)
+  Join :: (Avs a) => ALang (Either a a) a
+
+  Dist
     :: (Avs a1, Avs a2, Avs a3)
-    => ALang v (a1, Either a2 a3) (Either (a1, a2) (a1, a3))
+    => ALang (a1, Either a2 a3) (Either (a1, a2) (a1, a3))
+  UnDist
+    :: (Avs a1, Avs a2, Avs a3)
+    => ALang (Either (a1, a2) (a1, a3)) (a1, Either a2 a3)
 
-  GetState :: (Service v) => ALang v a (SvState v)
-  VdTerm :: (ValDomain l, Avs a, Avs b) => l a b -> ALang v a b
-  SvTerm :: (Service v, Avs a, Avs b) => v a b -> ALang v a b
+  Forget :: (Avs a) => ALang a ()
 
-(<<<) :: (Avs a, Avs b, Avs c) => ALang v b c -> ALang v a b -> ALang v a c
+(<<<) :: (Avs a, Avs b, Avs c) => ALang b c -> ALang a b -> ALang a c
 (<<<) = PipeRL
 
-(>>>) :: (Avs a, Avs b, Avs c) => ALang v a b -> ALang v b c -> ALang v a c
+(>>>) :: (Avs a, Avs b, Avs c) => ALang a b -> ALang b c -> ALang a c
 (>>>) = flip PipeRL
 
 (&&&)
   :: (Avs a, Avs b1, Avs b2)
-  => ALang v a b1
-  -> ALang v a b2
-  -> ALang v a (b1,b2)
+  => ALang a b1
+  -> ALang a b2
+  -> ALang a (b1,b2)
 (&&&) a1 a2 = Split >>> ATimes a1 a2
 
 leftA 
   :: (Avs a1, Avs a2, Avs b1) 
-  => ALang v a1 b1
-  -> ALang v (Either a1 a2) (Either b1 a2)
+  => ALang a1 b1
+  -> ALang (Either a1 a2) (Either b1 a2)
 leftA m = ASum m Id
 
 rightA
   :: (Avs a1, Avs a2, Avs b2) 
-  => ALang v a2 b2
-  -> ALang v (Either a1 a2) (Either a1 b2)
+  => ALang a2 b2
+  -> ALang (Either a1 a2) (Either a1 b2)
 rightA m = ASum Id m
 
 (>?>) m1 m2 = m1 >>> rightA m2
@@ -77,17 +80,17 @@ infixl 8 >!>
 
 firstA
   :: (Avs a1, Avs a2, Avs b)
-  => ALang v a1 b
-  -> ALang v (a1,a2) (b,a2)
+  => ALang a1 b
+  -> ALang (a1,a2) (b,a2)
 firstA a = ATimes a Id
 
 secondA
   :: (Avs a1, Avs a2, Avs b)
-  => ALang v a2 b
-  -> ALang v (a1,a2) (a1,b)
+  => ALang a2 b
+  -> ALang (a1,a2) (a1,b)
 secondA a = ATimes Id a
 
-interpret :: ALang v a b -> a -> b
+interpret :: ALang a b -> a -> b
 interpret m a = case (m,a) of
   (Id, a) -> a
   (Fun f, a) -> f a
@@ -97,64 +100,50 @@ interpret m a = case (m,a) of
   (ASum m1 _, Left a1) -> Left (interpret m1 a1)
   (ASum _ m2, Right a2) -> Right (interpret m2 a2)
   (Split, a) -> (a,a)
-  (TakeL, a) -> fst a
-  (TakeR, a) -> snd a
+  (Take, a) -> fst a
   (Join, Right a) -> a
   (Join, Left a) -> a
 
 symbolize
-  :: (Service v, Avs a, Avs b)
-  => ALang v a b
-  -> Sy (SvState v)
+  :: (Avs a, Avs b)
+  => ALang a b
   -> Sy a
-  -> Symbolic (Sy (SvState v), Sy b)
-symbolize m d a = case m of
-  Id -> return (d, a)
-  Fun _ -> (,) d <$> forall_
-  Const x -> return (d, literal $ toRep x)
+  -> Symbolic (Sy b)
+symbolize m a = case m of
+  Id -> return a
+  Fun _ -> forall_
+  Const x -> return (literal $ toRep x)
   PipeRL ml mr -> do
-    (d', b) <- symbolize mr d a
-    symbolize ml d' b
+    b <- symbolize mr a
+    symbolize ml b
   ATimes m1 m2 -> do 
-    (d', b1) <- symbolize m1 d (_1 a)
-    (d'', b2) <- symbolize m2 d' (_2 a)
-    return (d'', tuple (b1, b2))
+    b1 <- symbolize m1 (_1 a)
+    b2 <- symbolize m2 (_2 a)
+    return (tuple (b1, b2))
   ASum ml mr -> do
-    (dl, bl) <- symbolize ml d (fromLeft a)
-    (dr, br) <- symbolize mr d (fromRight a)
-    let d' = Data.SBV.Either.either (const dl) (const dr) a
-        b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
-    return (d', b)
-  Split -> return (d, tuple (a,a))
-  TakeL -> return (d, _1 a)
-  TakeR -> return (d, _2 a)
-  AssumeL -> return (d, fromLeft a)
-  AssumeR -> return (d, fromRight a)
-  Join -> return (d, Data.SBV.Either.either id id a)
-  Flip -> return (d, tuple (_2 a, _1 a))
-  DistL -> 
+    bl <- symbolize ml (fromLeft a)
+    br <- symbolize mr (fromRight a)
+    let b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
+    return b
+  Split -> return (tuple (a,a))
+  Flip -> return (tuple (_2 a, _1 a))
+  Take -> return (_1 a)
+  Join -> return (Data.SBV.Either.either id id a)
+  Dist -> 
     let b = bimap
               (\al -> tuple (_1 a, al))
               (\ar -> tuple (_1 a, ar))
               (_2 a)
-    in return (d, b)
+    in return b
 
-  VdTerm l -> do
-    let VSpec m = vdSymbol l
-    (,) d <$> m a
-
-  SvTerm v -> do
-    let SSpec m = svSymbol v
-    m d a
-
-checkSpec :: (Service v, Avs a, Avs b) => ALang v a b -> TSpec (SvState v) a b -> IO Bool
-checkSpec tr (TSpec m) = do
-  r <- prove $ do
-    d1 <- forall_
-    a <- forall_
-    (d2, b) <- symbolize tr d1 a
-    m d1 a d2 b
-  case r of
-    ThmResult (Unsatisfiable _ _) -> return True
-    ThmResult (Satisfiable _ _) -> return False
-    _ -> error (show r)
+-- checkSpec :: (Avs a, Avs b) => ALang a b -> VSpec a b -> IO Bool
+-- checkSpec tr (TSpec m) = do
+--   r <- prove $ do
+--     d1 <- forall_
+--     a <- forall_
+--     (d2, b) <- symbolize tr d1 a
+--     m d1 a d2 b
+--   case r of
+--     ThmResult (Unsatisfiable _ _) -> return True
+--     ThmResult (Satisfiable _ _) -> return False
+--     _ -> error (show r)

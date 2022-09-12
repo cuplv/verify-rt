@@ -45,6 +45,8 @@ data ALang a b where
 
   Forget :: (Avs a) => ALang a ()
 
+  VdTerm :: (Avs a, Avs b, ValDomain v) => v a b -> ALang a b
+
 (<<<) :: (Avs a, Avs b, Avs c) => ALang b c -> ALang a b -> ALang a c
 (<<<) = PipeRL
 

@@ -4,7 +4,6 @@
 
 module ALang where
 
-import Service
 import Symbol
 import ValDomain
 
@@ -137,15 +136,3 @@ symbolize m a = case m of
               (\ar -> tuple (_1 a, ar))
               (_2 a)
     in return b
-
--- checkSpec :: (Avs a, Avs b) => ALang a b -> VSpec a b -> IO Bool
--- checkSpec tr (TSpec m) = do
---   r <- prove $ do
---     d1 <- forall_
---     a <- forall_
---     (d2, b) <- symbolize tr d1 a
---     m d1 a d2 b
---   case r of
---     ThmResult (Unsatisfiable _ _) -> return True
---     ThmResult (Satisfiable _ _) -> return False
---     _ -> error (show r)

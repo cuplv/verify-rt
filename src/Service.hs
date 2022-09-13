@@ -17,10 +17,8 @@ import Data.SBV.Tuple
 import qualified Data.SBV.List as SList
 
 data Service s a
-  = Service { svReq :: ALang a (SReq s)
-            , svEff :: ALang (s,a) (SEff s)
-            }
+  = Service (ALang a (SReq s, SEff s))
 
 data SLang s a b where
   SlPure :: ALang a b -> SLang s a b
-  SlService :: Service s a -> SLang s a s
+  SlService :: Service s a -> SLang s a (Either () s)

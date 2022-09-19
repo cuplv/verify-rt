@@ -25,6 +25,14 @@ instance (Avs a, Avs b) => Avs (a,b) where
   type Rep (a,b) = (Rep a, Rep b)
   toRep (a,b) = (toRep a, toRep b)
 
+instance (Avs a, Avs b, Avs c) => Avs (a,b,c) where
+  type Rep (a,b,c) = (Rep a, Rep b, Rep c)
+  toRep (a,b,c) = (toRep a, toRep b, toRep c)
+
+instance (Avs a, Avs b, Avs c, Avs d) => Avs (a,b,c,d) where
+  type Rep (a,b,c,d) = (Rep a, Rep b, Rep c, Rep d)
+  toRep (a,b,c,d) = (toRep a, toRep b, toRep c, toRep d)
+
 instance (Avs a, Avs b) => Avs (Either a b) where
   type Rep (Either a b) = Either (Rep a) (Rep b)
   toRep (Left a) = Left (toRep a)

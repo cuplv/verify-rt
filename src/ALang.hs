@@ -68,6 +68,9 @@ data ALang t a b where
 (>>>) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t b c -> ALang t a c
 (>>>) = flip PipeRL
 
+(>>|) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t () c -> ALang t a c
+(>>|) t1 t2 = t1 >>> Forget >>> t2
+
 (&&&)
   :: (Avs a, Avs b1, Avs b2)
   => ALang t a b1

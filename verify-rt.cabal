@@ -8,7 +8,16 @@ maintainer:         contact@octalsrc.org
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  ALang, ALang.Example, ALang.Prelude, Compile, RLang, Service, Store, Symbol, ValDomain
+    exposed-modules:  ALang
+                    , ALang.Example
+                    , Atl
+                    , Compile
+                    , RLang
+                    , Store.Model
+                    , Store.Model.Int
+                    , Store.Model.Map
+                    , Symbol
+                    , ValDomain
 
     -- Modules included in this library but not exported.
     -- other-modules:

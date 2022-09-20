@@ -3,11 +3,11 @@
 
 module ALang.Example where
 
-import ALang.Prelude
+import ALang
 import Data.Map (Map)
 import Data.SBV
 import qualified Data.SBV.List as SList
-import Store
+import Store.Model
 
 {-| Subtract the input amount from the state, if the amount is
   available. -}
@@ -24,7 +24,7 @@ takeStock =
 effectSub :: (Avs a) => SLang Int IntView a ()
 effectSub =
   assert (VdTerm MkSubCap)
-  >>> getConf
+  >>| getConf
   >>> VdTerm Negate
   >>> update
 

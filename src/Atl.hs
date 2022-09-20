@@ -28,33 +28,33 @@ data Action r w a b where
 
 type Atl r w = ALang (Action r w) 
 
--- query
---   :: (Avs w, Avs (SEff s), Avs (SState s), Avs (SCap s), Avs a, Avs b1, Avs b2)
---   => ALang' w (SReq s)
---   -> SLang w s s b1
---   -> SLang w s () b2
---   -> SLang w s a (Either b2 b1)
--- query r a1 a2 = Forget >>> FxTerm (SlQuery r a1 a2)
+query
+  :: (Request r, Avs w, Avs a, Avs b1, Avs b2)
+  => ALang' w r
+  -> Atl r w (Ctx r) b1
+  -> Atl r w () b2
+  -> Atl r w a (Either b2 b1)
+query r a1 a2 = Forget >>> FxTerm (SlQuery r a1 a2)
 
--- assert
---   :: (Avs s, Avs w, Avs (SEff s), Avs (SState s), Avs (SCap s), Avs a)
---   => ALang' w (SReq s)
---   -> SLang w s a s
--- assert r = Forget >>> FxTerm (SlAssert r)
+assert
+  :: (Request r, Avs w, Avs a)
+  => ALang' w r
+  -> Atl r w a (Ctx r)
+assert r = Forget >>> FxTerm (SlAssert r)
 
--- getConf
---   :: (Avs w, Avs (SEff s), Avs (SState s), Avs (SCap s), Avs a)
---   => SLang w s a w
--- getConf = Forget >>> FxTerm SlConf
+getConf
+  :: (Request r, Avs w, Avs a)
+  => Atl r w a w
+getConf = Forget >>> FxTerm SlConf
 
--- update
---   :: (Avs w, Avs (SEff s), Avs (SState s), Avs (SCap s))
---   => SLang w s (SEff s) ()
--- update = FxTerm SlUpdate
+update
+  :: (Request r, Avs w)
+  => Atl r w (Upd r) ()
+update = FxTerm SlUpdate
 
--- instance (Avs w, Avs (SEff s), Avs (SState s), Avs (SCap s)) => Fx (Action w s) where
---   type FxRep (Action w s) = (SState s, SCap s, SCap s, SEff s)
---   fxSym = undefined
+instance (Request r, Avs w) => Fx (Action r w) where
+  type FxRep (Action r w) = (State r, Cap r, Cap r, Upd r)
+  fxSym = undefined
 
 -- compile :: (StoreView s) => SLang w s a b -> RLang w s b
 -- compile t = case t of

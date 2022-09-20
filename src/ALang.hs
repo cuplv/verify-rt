@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module ALang where
@@ -152,3 +153,58 @@ symbolize m (s,a) = case m of
               (\ar -> tuple (_1 a, ar))
               (_2 a)
     in return (s,b)
+
+class Tup1 a where
+  type At1 a
+  tup1 :: ALang v a (At1 a)  
+
+instance (Avs a, Avs b) => Tup1 (a,b) where
+  type At1 (a,b) = a
+  tup1 = Take
+
+instance (Avs a, Avs b, Avs c) => Tup1 (a,b,c) where
+  type At1 (a,b,c) = a
+  tup1 = VdTerm Tup3T2 >>> Take
+
+instance (Avs a, Avs b, Avs c, Avs d) => Tup1 (a,b,c,d) where
+  type At1 (a,b,c,d) = a
+  tup1 = VdTerm Tup4T3 >>> VdTerm Tup3T2 >>> Take
+
+
+class Tup2 a where
+  type At2 a
+  tup2 :: ALang v a (At2 a)
+
+instance (Avs a, Avs b) => Tup2 (a,b) where
+  type At2 (a,b) = b
+  tup2 = Flip >>> Take
+
+instance (Avs a, Avs b, Avs c) => Tup2 (a,b,c) where
+  type At2 (a,b,c) = b
+  tup2 = VdTerm Tup3T2 >>> tup2 >>> tup1
+
+instance (Avs a, Avs b, Avs c, Avs d) => Tup2 (a,b,c,d) where
+  type At2 (a,b,c,d) = b
+  tup2 = VdTerm Tup4T3 >>> tup2
+
+
+class Tup3 a where
+  type At3 a
+  tup3 :: ALang v a (At3 a)
+
+instance (Avs a, Avs b, Avs c) => Tup3 (a,b,c) where
+  type At3 (a,b,c) = c
+  tup3 = VdTerm Tup3T2 >>> tup2 >>> tup2
+
+instance (Avs a, Avs b, Avs c, Avs d) => Tup3 (a,b,c,d) where
+  type At3 (a,b,c,d) = c
+  tup3 = VdTerm Tup4T3 >>> tup3 >>> Take
+
+
+class Tup4 a where
+  type At4 a
+  tup4 :: ALang v a (At4 a)
+
+instance (Avs a, Avs b, Avs c, Avs d) => Tup4 (a,b,c,d) where
+  type At4 (a,b,c,d) = d
+  tup4 = VdTerm Tup4T3 >>> tup3 >>> tup2

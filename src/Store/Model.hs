@@ -3,22 +3,28 @@
 
 module Store.Model where
 
+import ALang
 import Symbol
 
-class Update u where
+class (Avs u, Avs (UState u)) => Update u where
   type UState u
   idU :: u
-  seqU :: u -> u -> u
-  applyU :: u -> UState u -> UState u
+  seqU :: ALang' (u,u) u
+  applyU :: ALang' (u, UState u) (UState u)
 
-class Context c where
-  type CUpd c
-  capPermits :: c -> CUpd c -> Bool
-  envPermits :: c -> CUpd c -> Bool
+class (Avs k, Update (KUpd k)) => Capability k where
+  type KUpd k
 
-class (Context (Ctx r)) => RequestL r where
+class (Avs c, Capability (CCap c)) => Context c where
+  type CCap c
+  capC :: ALang' (c, KUpd (CCap c)) Bool
+  envC :: ALang' (c, State c, KUpd (CCap c)) Bool
+
+class (Avs r, Context (Ctx r)) => Request r where
   type Ctx r
 
-type Upd r = CUpd (Ctx r)
+type Cap r = CCap (Ctx r)
+
+type Upd r = KUpd (Cap r)
 
 type State r = UState (Upd r)

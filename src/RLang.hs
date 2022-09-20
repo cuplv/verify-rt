@@ -5,9 +5,9 @@ module RLang where
 
 import Store.Model
 
-data RAlt r c w b
+data RAlt r w b
   = RAlt { rReq :: w -> r
-         , rBody :: (c, w) -> (CUpd c, b)
+         , rBody :: (Ctx r, w) -> (Upd r, b)
          }
 
-data RLang r c w b = RLang [RAlt r c w b]
+data RLang r w b = RLang [RAlt r w b]

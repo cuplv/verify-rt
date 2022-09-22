@@ -19,7 +19,7 @@ class (Avs k, Update (KUpd k)) => Capability k where
 class (Avs r, Capability (Cap r)) => Request r where
   type Cap r
   seqR :: ALang' (r,r) r
-  minReq :: Upd r -> r
+  minReq :: ALang' (Upd r) r
 
 type Upd r = KUpd (Cap r)
 

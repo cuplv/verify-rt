@@ -40,6 +40,8 @@ data BaseVd a b where
 
   Tup4T3 :: BaseVd (a1,a2,a3,a4) (a1,a2,(a3,a4))
 
+  JustI :: BaseVd Int (Maybe Int)
+
 instance ValDomain BaseVd where
   vdSymbol l = case l of
     Sum -> VSpec $ \a -> return (_1 a + _2 a)

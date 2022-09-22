@@ -18,6 +18,7 @@ import qualified Data.SBV.List as SList
 
 data Action r w a b where
   SlConfig :: Action r w () w
+  SlReConfig :: ALang' w1 w2 -> Atl r w2 a b -> Action r w1 a b
   SlContext :: Action r w () (Ctx r)
   SlRequest :: ALang' w r -> Action r w () ()
   SlAlt :: Atl r w () b1 -> Atl r w () b2 -> Action r w () (Either b1 b2)
@@ -30,28 +31,31 @@ instance (Request r, Avs w) => Fx (Action r w) where
   fxSym = undefined
 
 query
-  :: (Request r, Avs w, Avs b1, Avs b2)
+  :: (Request r, Avs w, Avs a, Avs b1, Avs b2)
   => ALang' w r
   -> Atl r w () b1
   -> Atl r w (Ctx r) b2
-  -> Atl r w () (Either b1 b2)
-query r a1 a2 =
-  FxTerm $
-    SlAlt
-      a1
-      (FxTerm (SlRequest r)
-       >>> FxTerm SlContext
-       >>> a2)
+  -> Atl r w a (Either b1 b2)
+query r a1 a2 = Forget >>> FxTerm
+  (SlAlt a1 (FxTerm (SlRequest r) >>> FxTerm SlContext >>> a2))
 
 -- Use minReq to make the minimal Request that will cover this
 -- statically determined effect.
 updateS
-  :: (Request r, Avs w)
+  :: (Request r, Avs w, Avs a)
   => ALang' w (Upd r)
-  -> Atl r w () ()
+  -> Atl r w a ()
 updateS f =
- FxTerm $
-   SlRequest (f >>> undefined)
+  Forget
+  >>> FxTerm (SlRequest (f >>> minReq))
+  >>> FxTerm SlConfig
+  >>> liftNoFx f
+  >>> FxTerm SlUpdate
+
+getConf
+  :: (Request r, Avs w, Avs a)
+  => Atl r w a w
+getConf = Forget >>> FxTerm SlConfig
 
 -- compile :: (StoreView s) => SLang w s a b -> RLang w s b
 -- compile t = case t of

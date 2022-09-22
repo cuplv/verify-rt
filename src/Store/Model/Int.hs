@@ -46,11 +46,30 @@ instance Avs IntReq where
 instance Request IntReq where
   type Cap IntReq = IntCap
 
+atLeast :: ALang t Int IntReq
+atLeast =
+  Split
+  >>> firstA (VdTerm JustI)
+  >>> secondA (Forget
+               >>> Const (Just 0)
+               >>> Split
+               >>> secondA (Forget >>> (Const Nothing)))
+  >>> VdTerm Tup2T3
+  >>> VdTerm IntReqI
+
+addU :: ALang t Int IntUpd
+addU = VdTerm IntUpdI
+
+subU :: ALang t Int IntUpd
+subU = VdTerm Negate >>> addU
+
 data IntSd a b where
   IntUpdI :: IntSd Int IntUpd
   IntUpdE :: IntSd IntUpd Int
   IntCapI :: IntSd (Maybe Int) IntCap
   IntCapE :: IntSd IntCap (Maybe Int)
+  IntReqI :: IntSd (Maybe Int, Maybe Int, Maybe Int) IntReq
+  IntReqE :: IntSd IntReq (Maybe Int, Maybe Int, Maybe Int)
 
 instance ValDomain IntSd where
   vdSymbol l = case l of
@@ -58,8 +77,12 @@ instance ValDomain IntSd where
     IntUpdE -> VSpec return
     IntCapI -> VSpec return
     IntCapE -> VSpec return
+    IntReqI -> VSpec return
+    IntReqE -> VSpec return
   vdFun l = case l of
     IntUpdI -> IntUpd
     IntUpdE -> \(IntUpd i) -> i
     IntCapI -> IntCap
     IntCapE -> \(IntCap m) -> m
+    IntReqI -> \(a,b,c) -> IntReq a b c
+    IntReqE -> \(IntReq a b c) -> (a,b,c)

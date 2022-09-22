@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Store.Model where
 
@@ -15,16 +16,23 @@ class (Avs u, Avs (UState u)) => Update u where
 class (Avs k, Update (KUpd k)) => Capability k where
   type KUpd k
 
-class (Avs c, Capability (CCap c)) => Context c where
-  type CCap c
-  capC :: ALang' (c, KUpd (CCap c)) Bool
-  envC :: ALang' (c, State c, KUpd (CCap c)) Bool
-
-class (Avs r, Context (Ctx r)) => Request r where
-  type Ctx r
-
-type Cap r = CCap (Ctx r)
+class (Avs r, Capability (Cap r)) => Request r where
+  type Cap r
+  seqR :: ALang' (r,r) r
+  minReq :: Upd r -> r
 
 type Upd r = KUpd (Cap r)
 
 type State r = UState (Upd r)
+
+data Context k
+  = Context { ctxState :: UState (KUpd k)
+            , ctxEnv :: k
+            , ctxCap :: k
+            }
+
+type Ctx r = Context (Cap r)
+
+instance (Capability k) => Avs (Context k) where
+  type Rep (Context k) = (Rep (UState (KUpd k)), Rep k, Rep k)
+  toRep (Context s e c) = (toRep s, toRep e, toRep c)

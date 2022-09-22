@@ -17,44 +17,41 @@ import Data.SBV.Tuple
 import qualified Data.SBV.List as SList
 
 data Action r w a b where
-  SlConf :: Action r w () w
-  SlQuery
-    :: ALang' w r
-    -> Atl r w (Ctx r) b1
-    -> Atl r w () b2
-    -> Action r w () (Either b2 b1)
-  SlAssert :: ALang' w r -> Action r w () s
+  SlConfig :: Action r w () w
+  SlContext :: Action r w () (Ctx r)
+  SlRequest :: ALang' w r -> Action r w () ()
+  SlAlt :: Atl r w () b1 -> Atl r w () b2 -> Action r w () (Either b1 b2)
   SlUpdate :: Action r w (Upd r) ()
 
-type Atl r w = ALang (Action r w) 
-
-query
-  :: (Request r, Avs w, Avs a, Avs b1, Avs b2)
-  => ALang' w r
-  -> Atl r w (Ctx r) b1
-  -> Atl r w () b2
-  -> Atl r w a (Either b2 b1)
-query r a1 a2 = Forget >>> FxTerm (SlQuery r a1 a2)
-
-assert
-  :: (Request r, Avs w, Avs a)
-  => ALang' w r
-  -> Atl r w a (Ctx r)
-assert r = Forget >>> FxTerm (SlAssert r)
-
-getConf
-  :: (Request r, Avs w, Avs a)
-  => Atl r w a w
-getConf = Forget >>> FxTerm SlConf
-
-update
-  :: (Request r, Avs w)
-  => Atl r w (Upd r) ()
-update = FxTerm SlUpdate
+type Atl r w = ALang (Action r w)
 
 instance (Request r, Avs w) => Fx (Action r w) where
-  type FxRep (Action r w) = (State r, Cap r, Cap r, Upd r)
+  type FxRep (Action r w) = (State r, Cap r, Cap r)
   fxSym = undefined
+
+query
+  :: (Request r, Avs w, Avs b1, Avs b2)
+  => ALang' w r
+  -> Atl r w () b1
+  -> Atl r w (Ctx r) b2
+  -> Atl r w () (Either b1 b2)
+query r a1 a2 =
+  FxTerm $
+    SlAlt
+      a1
+      (FxTerm (SlRequest r)
+       >>> FxTerm SlContext
+       >>> a2)
+
+-- Use minReq to make the minimal Request that will cover this
+-- statically determined effect.
+updateS
+  :: (Request r, Avs w)
+  => ALang' w (Upd r)
+  -> Atl r w () ()
+updateS f =
+ FxTerm $
+   SlRequest (f >>> undefined)
 
 -- compile :: (StoreView s) => SLang w s a b -> RLang w s b
 -- compile t = case t of

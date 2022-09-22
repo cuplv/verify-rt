@@ -24,6 +24,9 @@ instance Fx NoFx where
   type FxRep NoFx = ()
   fxSym = undefined
 
+liftNoFx :: ALang' a b -> ALang t a b
+liftNoFx = undefined
+
 type ALang' a b = ALang NoFx a b
 
 data ALang t a b where

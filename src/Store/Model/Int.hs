@@ -25,21 +25,41 @@ instance Update IntUpd where
     firstA (VdTerm IntUpdE)
     >>> VdTerm Sum
 
-data IntView
-  = IntView { ivLow :: Maybe Int
-            , ivHigh :: Maybe Int
-            , ivAdd :: Maybe Int
-            , ivSub :: Maybe Int
-            }
+data IntCap = IntCap (Maybe Int)
+
+instance Avs IntCap where
+  type Rep IntCap = Maybe Integer
+  toRep (IntCap m) = fromIntegral <$> m
+
+instance Capability IntCap where
+  type KUpd IntCap = IntUpd
+
+data IntReq
+  = IntReq { irAtLeast :: Maybe Int
+           , irAbsSub :: Maybe Int
+           , irDiffSub :: Maybe Int
+           }
+
+instance Avs IntReq where
+  type Rep IntReq = (Maybe Integer, Maybe Integer, Maybe Integer)
+
+instance Request IntReq where
+  type Cap IntReq = IntCap
 
 data IntSd a b where
   IntUpdI :: IntSd Int IntUpd
   IntUpdE :: IntSd IntUpd Int
+  IntCapI :: IntSd (Maybe Int) IntCap
+  IntCapE :: IntSd IntCap (Maybe Int)
 
 instance ValDomain IntSd where
   vdSymbol l = case l of
     IntUpdI -> VSpec return
     IntUpdE -> VSpec return
+    IntCapI -> VSpec return
+    IntCapE -> VSpec return
   vdFun l = case l of
     IntUpdI -> IntUpd
     IntUpdE -> \(IntUpd i) -> i
+    IntCapI -> IntCap
+    IntCapE -> \(IntCap m) -> m

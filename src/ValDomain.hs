@@ -42,24 +42,24 @@ data BaseVd a b where
 
   JustI :: BaseVd Int (Maybe Int)
 
-instance ValDomain BaseVd where
-  vdSymbol l = case l of
-    Sum -> VSpec $ \a -> return (_1 a + _2 a)
-    Negate -> VSpec $ \a -> return (negate a)
-    VdLE -> VSpec $ \a -> return (ite (_1 a .<= _2 a)
-                                      (sRight su)
-                                      (sLeft su))
-    VdGE -> VSpec $ \a -> return (ite (_1 a .>= _2 a)
-                                      (sRight su)
-                                      (sLeft su))
-  vdFun l = case l of
-    Sum -> \(a1,a2) -> a1 + a2
-    Negate -> \a -> (-a)
-    VdLE -> \(a1,a2) -> if a1 <= a2
-                           then Right ()
-                           else Left ()
-    VdGE -> \(a1,a2) -> if a1 >= a2
-                           then Right ()
-                           else Left ()
-    Tup2T3 -> \(a1,(a2,a3)) -> (a1,a2,a3)
-    Tup3T2 -> \(a1,a2,a3) -> (a1,(a2,a3))
+-- instance ValDomain BaseVd where
+--   vdSymbol l = case l of
+--     Sum -> VSpec $ \a -> return (_1 a + _2 a)
+--     Negate -> VSpec $ \a -> return (negate a)
+--     VdLE -> VSpec $ \a -> return (ite (_1 a .<= _2 a)
+--                                       (sRight su)
+--                                       (sLeft su))
+--     VdGE -> VSpec $ \a -> return (ite (_1 a .>= _2 a)
+--                                       (sRight su)
+--                                       (sLeft su))
+--   vdFun l = case l of
+--     Sum -> \(a1,a2) -> a1 + a2
+--     Negate -> \a -> (-a)
+--     VdLE -> \(a1,a2) -> if a1 <= a2
+--                            then Right ()
+--                            else Left ()
+--     VdGE -> \(a1,a2) -> if a1 >= a2
+--                            then Right ()
+--                            else Left ()
+--     Tup2T3 -> \(a1,(a2,a3)) -> (a1,a2,a3)
+--     Tup3T2 -> \(a1,a2,a3) -> (a1,(a2,a3))

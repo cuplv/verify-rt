@@ -9,7 +9,10 @@ extra-source-files: CHANGELOG.md
 
 library
     exposed-modules:  ALang
+                    , ALang.Base
+                    , ALang.Construct                    
                     , ALang.Example
+                    , ALang.Internal
                     , Atl
                     , Compile
                     , RLang
@@ -17,7 +20,6 @@ library
                     , Store.Model.Int
                     , Store.Model.Map
                     , Symbol
-                    , ValDomain
 
     -- Modules included in this library but not exported.
     -- other-modules:

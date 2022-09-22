@@ -62,8 +62,7 @@ instance Avs Char where
 data SSpec d a b
   = SSpec (Sy d -> Sy a -> Symbolic (Sy d, Sy b))
 
-data VSpec a b
-  = VSpec (Sy a -> Symbolic (Sy b))
+type VSpec a b = Sy a -> Symbolic (Sy b)
 
 su = literal ()
 

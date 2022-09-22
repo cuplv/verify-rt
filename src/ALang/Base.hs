@@ -13,11 +13,32 @@ import Data.SBV
 import Data.SBV.Either
 import Data.SBV.Tuple
 
+-- Operators
+
 (<<<) :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t a b -> ALang t a c
 (<<<) = PipeRL
 
 (>>>) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t b c -> ALang t a c
 (>>>) = flip PipeRL
+
+(>>|) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t () c -> ALang t a c
+(>>|) t1 t2 = t1 >>> forget >>> t2
+
+(***)
+  :: (Avs a1, Avs a2, Avs b1, Avs b2)
+  => ALang t a1 b1
+  -> ALang t a2 b2
+  -> ALang t (a1,a2) (b1,b2)
+(***) = ATimes
+
+(&&&)
+  :: (Avs a, Avs b1, Avs b2)
+  => ALang t a b1
+  -> ALang t a b2
+  -> ALang t a (b1,b2)
+(&&&) a1 a2 = forkA >>> ATimes a1 a2
+
+-- Fundamental
 
 idA :: (Avs a) => ALang t a a
 idA = Arr return id
@@ -27,6 +48,11 @@ funA  = Arr (const forall_)
 
 constA :: (Avs a, Avs b) => b -> ALang t a b
 constA b = Arr (const . return . literal $ toRep b) (const b)
+
+forget :: (Avs a) => ALang t a ()
+forget = constA ()
+
+-- Tuples
 
 forkA :: (Avs a) => ALang t a (a,a) 
 forkA = Arr (\a -> return $ tuple (a,a)) (\a -> (a,a))
@@ -69,3 +95,59 @@ over2
   :: (Avs x, Avs y, Avs a, Avs b, Get2 x a, Set2 x y b)
   => ALang t a b -> ALang t x y
 over2 f = forkA >>> ATimes (get2 >>> f) idA >>> set2
+
+-- Either
+
+asLeft :: (Avs a, Avs b) => ALang t a (Either a b)
+asLeft = Arr (\a -> return $ sLeft a) Left
+
+asRight :: (Avs a, Avs b) => ALang t b (Either a b)
+asRight = Arr (\a -> return $ sRight a) Right
+
+onLeft :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t (Either a c) (Either b c)
+onLeft f = ASum f idA
+
+onRight :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (Either a b) (Either a c)
+onRight f = ASum idA f
+
+selectA :: (Avs a) => ALang t (Either a a) a
+selectA = Arr (\a -> return $ Data.SBV.Either.either id id a)
+              (\m -> case m of
+                       Right a -> a
+                       Left a -> a)
+
+distA :: (Avs a, Avs b, Avs c) => ALang t (a, Either b c) (Either (a,b) (a,c)) 
+distA = Arr f1 f2
+  where f1 a = return $ bimap
+                          (\al -> tuple (_1 a, al))
+                          (\ar -> tuple (_1 a, ar))
+                          (_2 a)
+
+        f2 (a, Left b) = Left (a,b)
+        f2 (a, Right c) = Right (a,c)
+
+undistA :: (Avs a, Avs b, Avs c) => ALang t (Either (a,b) (a,c)) (a, Either b c)
+undistA = (ASum get1 get1 >>> selectA) &&& ASum get2 get2
+
+b2eA :: ALang t Bool (Either () ())
+b2eA = Arr (\a -> return (ite a (sRight su) (sLeft su)))
+           (\a -> if a
+                     then Right ()
+                     else Left ())
+
+e2bA :: (Avs a, Avs b) => ALang t (Either a b) Bool
+e2bA = ASum (constA False) (constA True) >>> selectA
+
+-- Ints
+
+sumA :: ALang t (Int,Int) Int
+sumA = Arr (\a -> return (_1 a + _2 a)) (\(a,b) -> a + b)
+
+negateA :: ALang t Int Int
+negateA = Arr (\a -> return (-a)) (\a -> (-a))
+
+leA :: ALang t (Int,Int) Bool
+leA = Arr (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
+
+geA :: ALang t (Int,Int) Bool
+geA = Arr (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)

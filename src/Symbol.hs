@@ -33,6 +33,10 @@ instance (Avs a, Avs b, Avs c, Avs d) => Avs (a,b,c,d) where
   type Rep (a,b,c,d) = (Rep a, Rep b, Rep c, Rep d)
   toRep (a,b,c,d) = (toRep a, toRep b, toRep c, toRep d)
 
+instance Avs Bool where
+  type Rep Bool = Bool
+  toRep = id
+
 instance (Avs a) => Avs (Maybe a) where
   type Rep (Maybe a) = Maybe (Rep a)
   toRep (Just a) = Just (toRep a)

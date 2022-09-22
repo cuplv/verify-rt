@@ -11,6 +11,7 @@ import Symbol
 
 import Data.SBV
 import Data.SBV.Either
+import Data.SBV.Maybe
 import Data.SBV.Tuple
 
 -- Operators
@@ -138,10 +139,40 @@ b2eA = Arr (\a -> return (ite a (sRight su) (sLeft su)))
 e2bA :: (Avs a, Avs b) => ALang t (Either a b) Bool
 e2bA = ASum (constA False) (constA True) >>> selectA
 
+asJust :: (Avs a) => ALang t a (Maybe a)
+asJust = Arr (\a -> return $ sJust a) Just
+
+fromJust :: (Avs a) => a -> ALang t (Maybe a) a
+fromJust a = m2eA >>> ASum (constA a) idA >>> selectA
+
+m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
+m2eA = Arr (return . Data.SBV.Maybe.maybe (literal (Left ())) sRight)
+           (\m -> case m of
+                    Just a -> Right a
+                    Nothing -> Left ())
+
+e2mA :: (Avs a, Avs b) => ALang t (Either a b) (Maybe b)
+e2mA = Arr (return . Data.SBV.Either.either (\_ -> literal Nothing) sJust)
+           (\m -> case m of
+                    Left _ -> Nothing
+                    Right a -> Just a)
+
+onJust :: (Avs a, Avs b) => ALang t a b -> ALang t (Maybe a) (Maybe b)
+onJust f = m2eA >>> ASum idA f >>> e2mA
+
 -- Ints
 
 sumA :: ALang t (Int,Int) Int
 sumA = Arr (\a -> return (_1 a + _2 a)) (\(a,b) -> a + b)
+
+diffA :: ALang t (Int,Int) Int
+diffA = over2 negateA >>> sumA
+
+plusA :: Int -> ALang t Int Int
+plusA n = idA &&& constA n >>> sumA
+
+minusA :: Int -> ALang t Int Int
+minusA n = idA &&& constA n >>> diffA
 
 negateA :: ALang t Int Int
 negateA = Arr (\a -> return (-a)) (\a -> (-a))

@@ -10,6 +10,7 @@ import Data.SBV
 import qualified Data.SBV.List as SList
 import Store.Model
 import Store.Model.Int
+import Symbol
 
 {-| Subtract the config amount from the state, if the amount is
   available. -}
@@ -22,3 +23,8 @@ takeStock =
      (Const "Not enough stock.")
      -- If so, subtract the config value.  Then, return the config value.
      (updateS subU >>> getConf)
+
+nonNegative :: (Avs a, Avs b) => AtlSpec IntReq Int a b
+nonNegative = prePost
+  (\s -> s .>= 0)
+  (\s -> s .>= 0)

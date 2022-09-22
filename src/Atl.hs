@@ -64,3 +64,20 @@ getConf = Forget >>> FxTerm SlConfig
 --     [RAlt (interpret f) (\(_,s) -> (idE, Right s))
 --     ,RAlt (const emptyR) (const (idE, Left ()))
 --     ]
+
+type AtlModel s c u w a b 
+  = (s,c,c) -> w -> a -> Symbolic (u, b)
+
+data AtlSpec r w a b
+  = AtlSpec { sPre :: Sy (State r) -> Sy w -> Sy a -> Symbolic SBool
+            , sPost :: Sy (State r) -> Sy b -> Symbolic SBool
+            }
+
+prePost
+  :: (Request r, Avs w, Avs a, Avs b)
+  => (Sy (State r) -> SBool)
+  -> (Sy (State r) -> SBool)
+  -> AtlSpec r w a b
+prePost p q = AtlSpec
+  (\s _ _ -> return $ p s)
+  (\s _ -> return $ q s)

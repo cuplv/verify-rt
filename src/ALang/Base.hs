@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module ALang.Base where
 
@@ -39,6 +40,13 @@ import Data.SBV.Tuple
   -> ALang t a (b1,b2)
 (&&&) a1 a2 = forkA >>> ATimes a1 a2
 
+(|||)
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a c
+  -> ALang t b c
+  -> ALang t (Either a b) c
+(|||) ml mr = ASum ml mr >>> selectA
+
 -- Fundamental
 
 idA :: (Avs a) => ALang t a a
@@ -54,6 +62,14 @@ forget :: (Avs a) => ALang t a ()
 forget = constA ()
 
 -- Tuples
+
+tup2t3 :: (Avs a, Avs b, Avs c) => ALang t ((a,b),c) (a,b,c)
+tup2t3 = Arr (\a -> return $ tuple (_1 (_1 a), _2 (_1 a), _2 a))
+             (\((a,b),c) -> (a,b,c))
+
+tup3t2 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) ((a,b),c)
+tup3t2 = Arr (\a -> return $ tuple (tuple (_1 a, _2 a), _3 a))
+             (\(a,b,c) -> ((a,b),c))
 
 forkA :: (Avs a) => ALang t a (a,a) 
 forkA = Arr (\a -> return $ tuple (a,a)) (\a -> (a,a))
@@ -92,10 +108,25 @@ over1
   => ALang t a b -> ALang t x y
 over1 f = forkA >>> ATimes (get1 >>> f) idA >>> set1
 
+tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
+tup2g1 = Arr (return . _1) fst
+
+tup2g2 :: (Avs a, Avs b) => ALang t (a,b) b
+tup2g2 = Arr (return . _2) snd
+
+fstA :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t (a,c) (b,c)
+fstA = over1
+
 over2
   :: (Avs x, Avs y, Avs a, Avs b, Get2 x a, Set2 x y b)
   => ALang t a b -> ALang t x y
 over2 f = forkA >>> ATimes (get2 >>> f) idA >>> set2
+
+sndA :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (a,b) (a,c)
+sndA = over2
+
+tup3g2 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) b
+tup3g2 = tup3t2 >>> tup2g1 >>> tup2g2
 
 -- Either
 
@@ -182,3 +213,10 @@ leA = Arr (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
 
 geA :: ALang t (Int,Int) Bool
 geA = Arr (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)
+
+--- Datatype construction
+
+class (Avs d, (Avs (Content d))) => AData d where
+  type Content d
+  conA :: ALang t (Content d) d
+  deconA :: ALang t d (Content d)

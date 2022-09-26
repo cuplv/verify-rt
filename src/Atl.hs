@@ -30,11 +30,11 @@ instance (Request r, Avs w) => Fx (Action r w) where
   type FxRep (Action r w) = (State r, Cap r, Cap r)
   fxSym = undefined
 
-query
+request
   :: (Request r, Avs w, Avs a)
   => ReqMake w r
   -> Atl r w a (Ctx r)
-query r = FxTerm (SlRequest r) >>> FxTerm SlContext
+request r = FxTerm (SlRequest r) >>> FxTerm SlContext
 
 -- Use minReq to make the minimal Request that will cover this
 -- statically determined effect.

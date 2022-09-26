@@ -7,6 +7,6 @@ import ALang
 import Store.Model
 
 data Transact r w b
-  = Transact { trReq :: Fun w r
+  = Transact { trReq :: w -> r
              , trBody :: Fun (Ctx r, w) (Upd r, b)
              }

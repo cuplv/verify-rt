@@ -5,6 +5,8 @@
 module Store.Model where
 
 import ALang
+import ALang.Base (AData (..))
+import ALang.Construct
 
 class (Avs u, Avs (UState u)) => Update u where
   type UState u
@@ -47,3 +49,11 @@ type Ctx r = Context (Cap r)
 instance (Capability k) => Avs (Context k) where
   type Rep (Context k) = (Rep (UState (KUpd k)), Rep k, Rep k)
   toRep (Context s e c) = (toRep s, toRep e, toRep c)
+
+instance (Capability k) => AData (Context k) where
+  type Content (Context k) = (UState (KUpd k), k, k)
+  conA = Arr return (\(a,b,c) -> Context a b c)
+  deconA = Arr return (\(Context a b c) -> (a,b,c))
+
+getEnv :: (Capability k) => ALang t (Context k) k
+getEnv = deconA >>> tup3g2

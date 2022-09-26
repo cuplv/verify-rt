@@ -14,15 +14,15 @@ import Symbol
 
 {-| Subtract the config amount from the state, if the amount is
   available. -}
-takeStock :: Atl IntReq Int () (Either String Int)
+takeStock :: Atl IntReq Int () Int
 takeStock =
-  -- Check that the state's value is greater than or equal to the
+  -- Require that the state's value is greater than or equal to the
   -- transaction's config value.
-   query atLeast
-     -- If not, return an explanation of failure.
-     (Const "Not enough stock.")
-     -- If so, subtract the config value.  Then, return the config value.
-     (updateS subU >>> getConf)
+  request atLeast
+  -- Subtract the config value.
+  >>> updateS subU 
+  -- Then, return the config value.
+  >>> getConf
 
 nonNegative :: (Avs a, Avs b) => AtlSpec IntReq Int a b
 nonNegative = prePost

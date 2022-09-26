@@ -1,3 +1,3 @@
-module ALang.Construct (ALang (..), Fx (..)) where
+module ALang.Construct (ALang (..)) where
 
 import ALang.Internal

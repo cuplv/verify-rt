@@ -9,12 +9,6 @@ import Data.SBV.Either
 import Data.SBV.Tuple
 import Symbol
 
-type FxSpec t a b = (Sy (FxRep t), Sy a) -> Symbolic (Sy (FxRep t), Sy b)
-
-class (Avs (FxRep t)) => Fx t where
-  type FxRep t :: *
-  fxSym :: (Avs a, Avs b) => t a b -> FxSpec t a b
-
 data ALang t a b where
   PipeRL
     :: (Avs a, Avs b, Avs c)
@@ -28,29 +22,9 @@ data ALang t a b where
     -> ALang t a2 b2
     -> ALang t (Either a1 a2) (Either b1 b2)
   Arr :: (Avs a, Avs b) => (VSpec a b) -> (a -> b) -> ALang t a b
-  FxTerm :: (Fx t, Avs a, Avs b) => t a b -> ALang t a b
-
-symbolize :: (Fx t, Avs a, Avs b) => ALang t a b -> FxSpec t a b
-symbolize m (s,a) = case m of
-  PipeRL ml mr -> do
-    (s1,b) <- symbolize mr (s,a)
-    symbolize ml (s1,b)
-  ATimes m1 m2 -> do 
-    (s1,b1) <- symbolize m1 (s, _1 a)
-    (s2,b2) <- symbolize m2 (s1, _2 a)
-    return (s2, tuple (b1, b2))
-  ASum ml mr -> do
-    (sl,bl) <- symbolize ml (s, fromLeft a)
-    (sr,br) <- symbolize mr (s, fromRight a)
-    let s' = Data.SBV.Either.either (const sl) (const sr) a
-        b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
-    return (s',b)
+  FxTerm :: (Avs a, Avs b) => t a b -> ALang t a b
 
 data NoFx a b
-
-instance Fx NoFx where
-  type FxRep NoFx = ()
-  fxSym = undefined
 
 noFx :: Fun a b -> ALang t a b
 noFx a = case a of
@@ -64,3 +38,18 @@ type Fun a b = ALang NoFx a b
 runFun :: Fun a b -> a -> b
 runFun m = case m of
   PipeRL ml mr -> runFun ml . runFun mr 
+
+symbolize :: (Avs a, Avs b) => Fun a b -> VSpec a b
+symbolize m a = case m of
+  PipeRL ml mr -> do
+    b <- symbolize mr a
+    symbolize ml b
+  ATimes m1 m2 -> do 
+    b1 <- symbolize m1 (_1 a)
+    b2 <- symbolize m2 (_2 a)
+    return $ tuple (b1, b2)
+  ASum ml mr -> do
+    bl <- symbolize ml (fromLeft a)
+    br <- symbolize mr (fromRight a)
+    let b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
+    return b

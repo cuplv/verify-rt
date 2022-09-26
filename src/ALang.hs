@@ -4,8 +4,6 @@
 
 module ALang
   ( ALang (ASum, ATimes, FxTerm)
-  , Fx
-  , FxSpec
   , NoFx
   , Fun
   , noFx

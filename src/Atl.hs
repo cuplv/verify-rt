@@ -6,7 +6,6 @@
 module Atl where
 
 import ALang
-import ALang.Construct (FxRep, fxSym)
 import RLang
 import Store.Model
 import Symbol
@@ -25,10 +24,6 @@ data Action r w a b where
   SlUpdate :: Action r w (Upd r) ()
 
 type Atl r w = ALang (Action r w)
-
-instance (Request r, Avs w) => Fx (Action r w) where
-  type FxRep (Action r w) = (State r, Cap r, Cap r)
-  fxSym = undefined
 
 request
   :: (Request r, Avs w, Avs a)

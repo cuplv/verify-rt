@@ -7,12 +7,12 @@
 
 module ALang.Base where
 
-import ALang.Construct
+import ALang.Internal
 import Symbol
 
 import Data.SBV
 import Data.SBV.Either
-import Data.SBV.Maybe
+import qualified Data.SBV.Maybe as SM
 import Data.SBV.Tuple
 
 -- Operators
@@ -40,6 +40,13 @@ import Data.SBV.Tuple
   -> ALang t a (b1,b2)
 (&&&) a1 a2 = forkA >>> ATimes a1 a2
 
+(+++)
+  :: (Avs a, Avs b, Avs c, Avs d)
+  => ALang t a b
+  -> ALang t c d
+  -> ALang t (Either a c) (Either b d)
+(+++) = ASum
+
 (|||)
   :: (Avs a, Avs b, Avs c)
   => ALang t a c
@@ -60,6 +67,14 @@ constA b = Arr (const . return . literal $ toRep b) (const b)
 
 forget :: (Avs a) => ALang t a ()
 forget = constA ()
+
+-- Bools
+
+andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
+andAllA ts = Arr
+  (\a -> do bs <- mapM (\t -> symbolize t a) ts
+            return $ foldr (.&&) sTrue bs)
+  (\a -> and (map (\t -> runFun t a) ts))
 
 -- Tuples
 
@@ -125,8 +140,14 @@ over2 f = forkA >>> ATimes (get2 >>> f) idA >>> set2
 sndA :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (a,b) (a,c)
 sndA = over2
 
+tup3g1 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) a
+tup3g1 = tup3t2 >>> tup2g1 >>> tup2g1
+
 tup3g2 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) b
 tup3g2 = tup3t2 >>> tup2g1 >>> tup2g2
+
+tup3g3 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) c
+tup3g3 = tup3t2 >>> tup2g2
 
 -- Either
 
@@ -171,19 +192,19 @@ e2bA :: (Avs a, Avs b) => ALang t (Either a b) Bool
 e2bA = ASum (constA False) (constA True) >>> selectA
 
 asJust :: (Avs a) => ALang t a (Maybe a)
-asJust = Arr (\a -> return $ sJust a) Just
+asJust = Arr (\a -> return $ SM.sJust a) Just
 
 fromJust :: (Avs a) => a -> ALang t (Maybe a) a
 fromJust a = m2eA >>> ASum (constA a) idA >>> selectA
 
 m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
-m2eA = Arr (return . Data.SBV.Maybe.maybe (literal (Left ())) sRight)
+m2eA = Arr (return . SM.maybe (literal (Left ())) sRight)
            (\m -> case m of
                     Just a -> Right a
                     Nothing -> Left ())
 
 e2mA :: (Avs a, Avs b) => ALang t (Either a b) (Maybe b)
-e2mA = Arr (return . Data.SBV.Either.either (\_ -> literal Nothing) sJust)
+e2mA = Arr (return . Data.SBV.Either.either (\_ -> literal Nothing) SM.sJust)
            (\m -> case m of
                     Left _ -> Nothing
                     Right a -> Just a)

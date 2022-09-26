@@ -22,8 +22,12 @@ data Action r w a b where
   SlContext :: Action r w a (Ctx r)
   SlRequest :: ReqMake w r -> Action r w a ()
   SlUpdate :: Action r w (Upd r) ()
+  SlCancel :: Action r w a b
 
 type Atl r w = ALang (Action r w)
+
+cancel :: (Request r, Avs w, Avs a, Avs b) => Atl r w a b
+cancel = FxTerm SlCancel
 
 request
   :: (Request r, Avs w, Avs a)

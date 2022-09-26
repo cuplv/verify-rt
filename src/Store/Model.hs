@@ -16,11 +16,19 @@ class (Avs u, Avs (UState u)) => Update u where
 
 class (Avs k, Update (KUpd k)) => Capability k where
   type KUpd k
+  permitC :: Fun (KUpd k, k) Bool
 
 class (Capability (Cap r)) => Request r where
   type Cap r
+  emptyReq :: r
+  reqPred :: r -> Fun (Ctx r) Bool
   seqR :: r -> r -> r
   minReq :: ReqMake (Upd r) r
+
+reqMake :: (Request r, Avs w) => r -> ReqMake w r
+reqMake r = ReqMake { rmReq = const r
+                    , rmPred = sndA (reqPred r) >>> get2
+                    }
 
 data ReqMake w r
   = ReqMake { rmReq :: w -> r
@@ -55,5 +63,11 @@ instance (Capability k) => AData (Context k) where
   conA = Arr return (\(a,b,c) -> Context a b c)
   deconA = Arr return (\(Context a b c) -> (a,b,c))
 
+getState :: (Capability k) => ALang t (Context k) (UState (KUpd k))
+getState = deconA >>> tup3g1
+
 getEnv :: (Capability k) => ALang t (Context k) k
 getEnv = deconA >>> tup3g2
+
+getCap :: (Capability k) => ALang t (Context k) k
+getCap = deconA >>> tup3g3

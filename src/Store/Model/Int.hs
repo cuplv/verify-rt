@@ -44,6 +44,17 @@ instance AData IntCap where
 
 instance Capability IntCap where
   type KUpd IntCap = IntUpd
+  permitC =
+    fstA (deconA >>> negateA)
+    >>> sndA (deconA >>> m2eA)
+    >>> distA
+    >>> (constA True ||| leA)
+
+lowerBound :: ALang t (Context IntCap) (Either () Int)
+lowerBound =
+  (getState &&& (getEnv >>> deconA >>> m2eA))
+  >>> distA
+  >>> (constA () +++ diffA)
 
 data IntReq
   = IntReq { irAtLeast :: Maybe Int
@@ -53,6 +64,17 @@ data IntReq
 
 instance Request IntReq where
   type Cap IntReq = IntCap
+  emptyReq = IntReq { irAtLeast = Nothing
+                    , irAbsSub = Just 0
+                    , irDiffSub = Nothing
+                    }
+  reqPred (IntReq al as ds) = andAllA [b1]
+    where b1 = case al of
+                 Just s -> lowerBound
+                           >>> onLeft (constA False)
+                           >>> onRight ((constA s &&& idA) >>> leA)
+                           >>> selectA
+                 Nothing -> constA True
 
 atLeast :: ReqMake Int IntReq
 atLeast = ReqMake

@@ -9,6 +9,7 @@ module ALang
   , NoFx
   , Fun
   , noFx
+  , runFun
   , module ALang.Base
   , module Symbol
   ) where

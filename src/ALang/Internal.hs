@@ -60,3 +60,7 @@ noFx a = case a of
   Arr s f -> Arr s f
 
 type Fun a b = ALang NoFx a b
+
+runFun :: Fun a b -> a -> b
+runFun m = case m of
+  PipeRL ml mr -> runFun ml . runFun mr 

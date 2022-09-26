@@ -21,7 +21,7 @@ data Action r w a b where
   SlConfig :: Action r w a w
   SlReConfig :: Fun w1 w2 -> Atl r w2 a b -> Action r w1 a b
   SlContext :: Action r w a (Ctx r)
-  SlRequest :: Fun w r -> Action r w a ()
+  SlRequest :: ReqMake w r -> Action r w a ()
   SlUpdate :: Action r w (Upd r) ()
 
 type Atl r w = ALang (Action r w)
@@ -32,7 +32,7 @@ instance (Request r, Avs w) => Fx (Action r w) where
 
 query
   :: (Request r, Avs w, Avs a)
-  => Fun w r
+  => ReqMake w r
   -> Atl r w a (Ctx r)
 query r = FxTerm (SlRequest r) >>> FxTerm SlContext
 
@@ -43,7 +43,7 @@ updateS
   => Fun w (Upd r)
   -> Atl r w a ()
 updateS f =
-  FxTerm (SlRequest (f >>> minReq))
+  FxTerm (SlRequest (rmExtend f minReq))
   >>> getConf
   >>> noFx f
   >>> FxTerm SlUpdate

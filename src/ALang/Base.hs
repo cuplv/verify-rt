@@ -163,6 +163,14 @@ onLeft f = ASum f idA
 onRight :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (Either a b) (Either a c)
 onRight f = ASum idA f
 
+takeBoth
+  :: (Avs a, Avs b, Avs c, Avs d)
+  => ALang t (Either a b, Either c d)
+  -> ALang t (Either () (a,b))
+takeBoth =
+  distA
+  -- (Either (Either a b, c) (Either a b, d)
+
 selectA :: (Avs a) => ALang t (Either a a) a
 selectA = Arr (\a -> return $ Data.SBV.Either.either id id a)
               (\m -> case m of

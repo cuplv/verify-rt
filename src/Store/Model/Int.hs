@@ -23,11 +23,11 @@ instance AData IntUpd where
 instance Update IntUpd where
   type UState IntUpd = Int
   idU = IntUpd 0
-  seqU =
+  seqU _ =
     ATimes deconA deconA
     >>> sumA
     >>> conA
-  applyU =
+  applyU _ =
     fstA deconA
     >>> sumA
 
@@ -44,7 +44,7 @@ instance AData IntCap where
 
 instance Capability IntCap where
   type KUpd IntCap = IntUpd
-  permitC =
+  permitC _ =
     fstA (deconA >>> negateA)
     >>> sndA (deconA >>> m2eA)
     >>> distA

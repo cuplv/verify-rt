@@ -11,12 +11,12 @@ import ALang.Construct
 class (Avs u, Avs (UState u)) => Update u where
   type UState u
   idU :: u
-  seqU :: Fun (u,u) u
-  applyU :: Fun (u, UState u) (UState u)
+  seqU :: u -> Fun (u,u) u
+  applyU :: u -> Fun (u, UState u) (UState u)
 
 class (Avs k, Update (KUpd k)) => Capability k where
   type KUpd k
-  permitC :: Fun (KUpd k, k) Bool
+  permitC :: k -> Fun (KUpd k, k) Bool
 
 class (Capability (Cap r)) => Request r where
   type Cap r

@@ -89,23 +89,23 @@ bimapM
   -> m (SEither b1 b2)
 bimapM ml mr = eitherM (\a -> sLeft <$> ml a) (\a -> sRight <$> mr a)
 
-data TSpec d a b
-  = TSpec { tSpec :: Sy d -> Sy a -> Sy d -> Sy b -> Symbolic SBool
-          }
+-- data TSpec d a b
+--   = TSpec { tSpec :: Sy d -> Sy a -> Sy d -> Sy b -> Symbolic SBool
+--           }
 
-instance (Avs d, Avs a, Avs b) => Semigroup (TSpec d a b) where
-  TSpec m1 <> TSpec m2 = TSpec
-    (\a d b d' -> do r1 <- m1 a d b d' 
-                     r2 <- m2 a d b d'
-                     return (r1 .&& r2))
+-- instance (Avs d, Avs a, Avs b) => Semigroup (TSpec d a b) where
+--   TSpec m1 <> TSpec m2 = TSpec
+--     (\a d b d' -> do r1 <- m1 a d b d' 
+--                      r2 <- m2 a d b d'
+--                      return (r1 .&& r2))
 
-instance (Avs d, Avs a, Avs b) => Monoid (TSpec d a b) where
-  mempty = TSpec (\_ _ _ _ -> return sTrue)
+-- instance (Avs d, Avs a, Avs b) => Monoid (TSpec d a b) where
+--   mempty = TSpec (\_ _ _ _ -> return sTrue)
 
-invarS :: (Avs d, Avs a, Avs b) => (Sy d -> Symbolic SBool) -> TSpec d a b
-invarS f = TSpec (\d _ d' _ -> do r1 <- f d
-                                  r2 <- f d'
-                                  return $ r1 .=> r2)
+-- invarS :: (Avs d, Avs a, Avs b) => (Sy d -> Symbolic SBool) -> TSpec d a b
+-- invarS f = TSpec (\d _ d' _ -> do r1 <- f d
+--                                   r2 <- f d'
+--                                   return $ r1 .=> r2)
 
-prePostS :: (Avs d, Avs a, Avs b) => (Sy d -> Sy d -> Symbolic SBool) -> TSpec d a b
-prePostS f = TSpec (\d _ d' _ -> f d d')
+-- prePostS :: (Avs d, Avs a, Avs b) => (Sy d -> Sy d -> Symbolic SBool) -> TSpec d a b
+-- prePostS f = TSpec (\d _ d' _ -> f d d')

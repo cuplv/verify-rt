@@ -8,6 +8,7 @@ module ALang
   , Fun
   , noFx
   , runFun
+  , symbolize
   , module ALang.Base
   , module Symbol
   ) where

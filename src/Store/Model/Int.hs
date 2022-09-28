@@ -104,3 +104,10 @@ addU = conA
 
 subU :: ALang t Int IntUpd
 subU = negateA >>> conA
+
+-- takeStockTest :: Fun (Context IntCap, Int) (IntUpd, Int)
+-- takeStockTest =
+--   bothA (check1 &&& check2)
+--   >>> 
+--   where check1 = undefined
+--         check2 = undefined

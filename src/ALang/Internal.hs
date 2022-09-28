@@ -53,3 +53,4 @@ symbolize m a = case m of
     br <- symbolize mr (fromRight a)
     let b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
     return b
+  Arr s _ -> s a

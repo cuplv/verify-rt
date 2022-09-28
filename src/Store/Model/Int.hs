@@ -9,6 +9,10 @@ import Atl
 import Symbol
 import Store.Model
 
+import Data.SBV
+import Data.SBV.Tuple
+import qualified Data.SBV.Maybe as SM
+
 data IntUpd = IntUpd Int
 
 instance Avs IntUpd where
@@ -33,6 +37,9 @@ instance Update IntUpd where
 
 data IntCap = IntCap (Maybe Int)
 
+intWitness :: (IntCap, IntUpd)
+intWitness = (undefined, undefined)
+
 instance Avs IntCap where
   type Rep IntCap = Maybe Integer
   toRep (IntCap m) = fromIntegral <$> m
@@ -44,11 +51,17 @@ instance AData IntCap where
 
 instance Capability IntCap where
   type KUpd IntCap = IntUpd
-  permitC _ =
-    fstA (deconA >>> negateA)
-    >>> sndA (deconA >>> m2eA)
-    >>> distA
-    >>> (constA True ||| leA)
+  constrainC _ = SM.maybe sTrue (\n -> n .>= 0)
+  permitC _ = Arr
+    (\a -> return $ SM.maybe sTrue (\n -> n .>= (-(_1 a))) (_2 a))
+    (\(IntUpd u, IntCap m) -> case m of
+                                Just n -> n >= u
+                                Nothing -> True)
+  -- permitC _ =
+  --   fstA (deconA >>> negateA)
+  --   >>> sndA (deconA >>> m2eA)
+  --   >>> distA
+  --   >>> (constA True ||| leA)
 
 lowerBound :: ALang t (Context IntCap) (Either () Int)
 lowerBound =
@@ -116,11 +129,3 @@ addU = conA
 
 subU :: ALang t Int IntUpd
 subU = negateA >>> conA
-
-takeStockTest :: Fun (Context IntCap, Int) (Maybe (IntUpd, Int))
-takeStockTest =
-  flipA
-  >>> (tup2g1 &&& reqs)
-  >>> distA
-  >>> (constA Nothing ||| (tup2g1 >>> (subU &&& idA) >>> asJust))
-  where reqs = (atLeast &&& canSub) >>> bothA

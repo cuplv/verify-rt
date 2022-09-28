@@ -31,16 +31,15 @@ repSpec
   -> PrePost k w b
   -> Symbolic SBool
 repSpec (y,z) f (PrePost p q) = do
-  w <- forall_
-  s <- forall_
-  env <- forall_
-  cap <- forall_
+  w <- forall "w"
+  s <- forall "state"
+  env <- forall "env"
+  cap <- forall "cap"
 
   r <- symT f (s,env,cap) w
 
-  ue <- exists_
+  ue <- exists "ue"
   ueC <- symbolize (permitC y) (tuple (ue,env))
-  constrain ueC
   s1 <- symbolize (applyU z) (tuple (ue,s))
 
   pTrue <- p s1 w
@@ -48,13 +47,14 @@ repSpec (y,z) f (PrePost p q) = do
   let u = _1 (SM.fromJust r)
       b = _2 (SM.fromJust r)
 
-  ua <- forall_
+  ua <- forall "ua"
   uaC <- symbolize (permitC y) (tuple (ua,env))
-  constrain uaC
   u' <- symbolize (seqU z) (tuple (ua,u))
   s2 <- symbolize (applyU z) (tuple (u',s))
 
   qt' <- q s2 b
   let qTrue = SM.maybe sTrue (const qt') r
 
-  return (sNot pTrue .|| qTrue)
+  return $ sNot (constrainC y env .&& constrainC y cap)
+           .|| (ueC .&& sNot pTrue)
+           .|| (uaC .=> qTrue)

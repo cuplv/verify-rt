@@ -8,6 +8,8 @@ import ALang
 import ALang.Base (AData (..))
 import ALang.Construct
 
+import Data.SBV
+
 class (Avs u, Avs (UState u)) => Update u where
   type UState u
   idU :: u
@@ -17,6 +19,7 @@ class (Avs u, Avs (UState u)) => Update u where
 class (Avs k, Update (KUpd k)) => Capability k where
   type KUpd k
   permitC :: k -> Fun (KUpd k, k) Bool
+  constrainC :: k -> Sy k -> SBV Bool
 
 class (Capability (Cap r)) => Request r where
   type Cap r

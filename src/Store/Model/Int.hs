@@ -13,7 +13,7 @@ import Data.SBV
 import Data.SBV.Tuple
 import qualified Data.SBV.Maybe as SM
 
-data IntUpd = IntUpd Int
+data IntUpd = IntUpd Int deriving (Show)
 
 instance Avs IntUpd where
   type Rep IntUpd = Integer
@@ -79,7 +79,7 @@ canSub :: ALang t (Int, Context IntCap) (Either () ())
 canSub =
   sndA (getCap >>> deconA >>> m2eA)
   >>> distA
-  >>> (constA (Right ()) ||| (geA >>> b2eA))
+  >>> (constA (Right ()) ||| (leA >>> b2eA))
 
 -- lowerBound' :: ALang t (Context IntCap) (Either () (Either () (Int,Int)))
 -- lowerBound' =

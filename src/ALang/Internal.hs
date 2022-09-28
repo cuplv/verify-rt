@@ -38,6 +38,11 @@ type Fun a b = ALang NoFx a b
 runFun :: Fun a b -> a -> b
 runFun m = case m of
   PipeRL ml mr -> runFun ml . runFun mr 
+  ATimes a1 a2 -> \(a,b) -> (runFun a1 a, runFun a2 b)
+  ASum a1 a2 -> \m -> case m of
+                        Left a -> Left $ runFun a1 a
+                        Right a -> Right $ runFun a2 a
+  Arr _ f -> f
 
 symbolize :: (Avs a, Avs b) => Fun a b -> VSpec a b
 symbolize m a = case m of

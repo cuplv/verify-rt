@@ -54,6 +54,9 @@ nonN = PrePost
 test :: IO ()
 test = do
   putStrLn "Safe:"
-  print =<< prove (repSpec intWitness takeStockTest nonN)
+  print =<< prove (stateSpec intWitness takeStockTest nonN)
+  print =<< prove (capSpec intWitness takeStockTest)
+  putStrLn ""
   putStrLn "Unsafe:"
-  print =<< prove (repSpec intWitness takeStockUnsafe nonN)
+  print =<< prove (stateSpec intWitness takeStockUnsafe nonN)
+  print =<< prove (capSpec intWitness takeStockUnsafe)

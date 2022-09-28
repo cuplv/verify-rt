@@ -24,13 +24,13 @@ data PrePost k w b
             , ppPost :: Sy (UState (KUpd k)) -> Sy b -> Symbolic SBool
             } 
 
-repSpec
+stateSpec
   :: (Capability k, Avs w, Avs b)
   => (k, KUpd k)
   -> Transact' k w b
   -> PrePost k w b
   -> Symbolic SBool
-repSpec (y,z) f (PrePost p q) = do
+stateSpec (y,z) f (PrePost p q) = do
   w <- forall "w"
   s <- forall "state"
   env <- forall "env"
@@ -58,3 +58,35 @@ repSpec (y,z) f (PrePost p q) = do
   return $ sNot (constrainC y env .&& constrainC y cap)
            .|| (ueC .&& sNot pTrue)
            .|| (uaC .=> qTrue)
+
+capSpec
+  :: (Capability k, Avs w, Avs b)
+  => (k, KUpd k)
+  -> Transact' k w b
+  -> Symbolic SBool
+capSpec (y,z) f = do
+  w <- forall "w"
+  s <- forall "state"
+  env <- forall "env"
+  cap <- forall "cap"
+
+  r <- symT f (s,env,cap) w
+
+  let u = _1 (SM.fromJust r)
+      b = _2 (SM.fromJust r)
+
+  p <- symbolize (permitC y) (tuple (u,cap))
+  return $ sNot (constrainC y env .&& constrainC y cap)
+           .|| SM.isNothing r
+           .|| p
+
+safeTr
+  :: (Capability k, Avs w, Avs b)
+  => (k, KUpd k)
+  -> Transact' k w b
+  -> PrePost k w b
+  -> Symbolic SBool
+safeTr x f p = do
+  r1 <- stateSpec x f p
+  r2 <- capSpec x f
+  return (r1 .&& r2) 

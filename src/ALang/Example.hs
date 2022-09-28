@@ -18,7 +18,7 @@ takeStock :: Atl IntReq Int () Int
 takeStock =
   -- Require that the state's value is greater than or equal to the
   -- transaction's config value.
-  request atLeast
+  request atLeastR
   -- Subtract the config value.
   >>> updateS subU 
   -- Then, return the config value.

@@ -151,6 +151,10 @@ tup3g3 = tup3t2 >>> tup2g2
 
 -- Either
 
+type Bool' = Maybe' ()
+
+type Maybe' a = Either () a
+
 instance AFunctor Maybe where
   fmapA = onJust
 

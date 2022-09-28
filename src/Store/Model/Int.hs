@@ -56,6 +56,18 @@ lowerBound =
   >>> distA
   >>> (constA () +++ diffA)
 
+atLeast :: ALang t (Int, Context IntCap) Bool'
+atLeast =
+  sndA lowerBound
+  >>> distA
+  >>> (constA (Left ()) ||| (leA >>> b2eA))
+
+canSub :: ALang t (Int, Context IntCap) (Either () ())
+canSub =
+  sndA (getCap >>> deconA >>> m2eA)
+  >>> distA
+  >>> (constA (Right ()) ||| (geA >>> b2eA))
+
 -- lowerBound' :: ALang t (Context IntCap) (Either () (Either () (Int,Int)))
 -- lowerBound' =
 --   -- Context IntCap
@@ -92,8 +104,8 @@ instance Request IntReq where
                            >>> selectA
                  Nothing -> constA True
 
-atLeast :: ReqMake Int IntReq
-atLeast = ReqMake
+atLeastR :: ReqMake Int IntReq
+atLeastR = ReqMake
   (\i -> IntReq (Just i) Nothing Nothing)
   (sndA (getEnv >>> deconA >>> m2eA)
    >>> distA
@@ -105,9 +117,10 @@ addU = conA
 subU :: ALang t Int IntUpd
 subU = negateA >>> conA
 
--- takeStockTest :: Fun (Context IntCap, Int) (IntUpd, Int)
--- takeStockTest =
---   bothA (check1 &&& check2)
---   >>> 
---   where check1 = undefined
---         check2 = undefined
+takeStockTest :: Fun (Context IntCap, Int) (Maybe (IntUpd, Int))
+takeStockTest =
+  flipA
+  >>> (tup2g1 &&& reqs)
+  >>> distA
+  >>> (constA Nothing ||| (tup2g1 >>> (subU &&& idA) >>> asJust))
+  where reqs = (atLeast &&& canSub) >>> bothA

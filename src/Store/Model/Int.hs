@@ -56,15 +56,15 @@ lowerBound =
   >>> distA
   >>> (constA () +++ diffA)
 
-lowerBound' :: ALang t (Context IntCap) (Either () (Either () (Int,Int)))
-lowerBound' =
-  -- Context IntCap
-  (lowerBound &&& (getCap >>> deconA >>> m2eA))
-  -- (Either () Int, Either () Int)
-  >>> distA
-  -- Either () (Either () Int, Int)
-  >>> onRight (flipA >>> distA)
-  -- Either () (Either () (Int,Int))
+-- lowerBound' :: ALang t (Context IntCap) (Either () (Either () (Int,Int)))
+-- lowerBound' =
+--   -- Context IntCap
+--   (lowerBound &&& (getCap >>> deconA >>> m2eA))
+--   -- (Either () Int, Either () Int)
+--   >>> distA
+--   -- Either () (Either () Int, Int)
+--   >>> onRight (flipA >>> distA)
+--   -- Either () (Either () (Int,Int))
 
 data IntReq
   = IntReq { irAtLeast :: Maybe Int
@@ -90,9 +90,6 @@ instance Request IntReq where
                            >>> onLeft (constA False)
                            >>> onRight ((constA n &&& idA) >>> geA)
                            >>> selectA
-                 Nothing -> constA True
-          b3 = case as of
-                 Just n -> undefined
                  Nothing -> constA True
 
 atLeast :: ReqMake Int IntReq

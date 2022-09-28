@@ -151,6 +151,38 @@ tup3g3 = tup3t2 >>> tup2g2
 
 -- Either
 
+instance AFunctor Maybe where
+  fmapA = onJust
+
+instance AApplicative Maybe where
+  pureA = asJust
+  bothA = (m2eA *** m2eA) >>> bothA >>> e2mA
+
+instance AMonad Maybe where
+  bindA f = m2eA >>> (constA Nothing ||| f)
+
+instance (Avs e) => AFunctor (Either e) where
+  fmapA = onRight
+
+instance (Avs e) => AApplicative (Either e) where
+  pureA = asRight
+  bothA = distA 
+    -- Either (Either e a, e) (Either e a, b)
+    >>> onLeft getLeft
+    -- Either e (Either e a, b)
+    >>> onRight (flipA >>> distA >>> onLeft tup2g2)
+    -- Either e (Either e (a,b))
+    >>> (asLeft ||| onRight flipA)
+
+instance (Avs e) => AMonad (Either e) where
+  bindA f = asLeft ||| f
+
+getLeft :: (Avs a, Avs b) => ALang t (Either a b, a) a
+getLeft = flipA >>> distA >>> (tup2g2 ||| tup2g1)
+
+getRight :: (Avs a, Avs b) => ALang t (Either a b, b) b
+getRight = flipA >>> distA >>> (tup2g1 ||| tup2g2)
+
 asLeft :: (Avs a, Avs b) => ALang t a (Either a b)
 asLeft = Arr (\a -> return $ sLeft a) Left
 
@@ -163,13 +195,16 @@ onLeft f = ASum f idA
 onRight :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (Either a b) (Either a c)
 onRight f = ASum idA f
 
-takeBoth
-  :: (Avs a, Avs b, Avs c, Avs d)
-  => ALang t (Either a b, Either c d)
-  -> ALang t (Either () (a,b))
-takeBoth =
-  distA
-  -- (Either (Either a b, c) (Either a b, d)
+-- bindA
+--   :: (Avs a, Avs b, Avs e)
+--   => ALang t a (Either e b)
+--   -> ALang t (Either e a) (Either e b)
+-- bindA f = asLeft ||| f
+
+flattenA
+  :: (Avs a, Avs e)
+  => ALang t (Either e (Either e a)) (Either e a)
+flattenA = undefined
 
 selectA :: (Avs a) => ALang t (Either a a) a
 selectA = Arr (\a -> return $ Data.SBV.Either.either id id a)
@@ -243,9 +278,35 @@ leA = Arr (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
 geA :: ALang t (Int,Int) Bool
 geA = Arr (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)
 
---- Datatype construction
+-- Datatype construction
 
 class (Avs d, (Avs (Content d))) => AData d where
   type Content d
   conA :: ALang t (Content d) d
   deconA :: ALang t d (Content d)
+
+-- Monad stack
+
+class AFunctor m where
+  fmapA :: (Avs a, Avs b, Avs (m a), Avs (m b))
+        => ALang t a b -> ALang t (m a) (m b)
+
+(<$>>) :: (AFunctor m, Avs a, Avs b, Avs c, Avs (m b), Avs (m c))
+       => ALang t a (m b) -> ALang t b c -> ALang t a (m c)
+(<$>>) f g = f >>> fmapA g
+
+class (AFunctor m) => AApplicative m where
+  pureA :: (Avs a, Avs (m a)) => ALang t a (m a)
+  bothA :: (Avs a, Avs b, Avs (m a), Avs (m b), Avs (m (a,b)))
+        => ALang t (m a, m b) (m (a,b))
+  liftA2A :: (Avs a, Avs b, Avs c, Avs (m a), Avs (m b), Avs (m c), Avs (m (a,b)))
+          => ALang t (a,b) c -> ALang t (m a, m b) (m c)
+  liftA2A f = bothA >>> fmapA f
+
+class (AApplicative m) => AMonad m where
+  bindA :: (Avs a, Avs b, Avs (m a), Avs (m b))
+        => ALang t a (m b) -> ALang t (m a) (m b)
+
+(>>=>) :: (AMonad m, Avs a, Avs b, Avs c, Avs (m a), Avs (m b), Avs (m c))
+       => ALang t a (m b) -> ALang t b (m c) -> ALang t a (m c)
+(>>=>) f g = f >>> bindA g

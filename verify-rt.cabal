@@ -20,6 +20,7 @@ library
                     , Store.Model.Int
                     , Store.Model.Map
                     , Symbol
+                    , Symbol.Map
                     , Verify
 
     -- Modules included in this library but not exported.

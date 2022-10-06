@@ -109,3 +109,5 @@ bimapM ml mr = eitherM (\a -> sLeft <$> ml a) (\a -> sRight <$> mr a)
 
 -- prePostS :: (Avs d, Avs a, Avs b) => (Sy d -> Sy d -> Symbolic SBool) -> TSpec d a b
 -- prePostS f = TSpec (\d _ d' _ -> f d d')
+
+type Binr s = s -> s -> Symbolic SBool

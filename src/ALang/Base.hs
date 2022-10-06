@@ -76,6 +76,21 @@ andAllA ts = Arr
             return $ foldr (.&&) sTrue bs)
   (\a -> and (map (\t -> runFun t a) ts))
 
+andA :: ALang t (Bool,Bool) Bool
+andA = Arr
+  (\a -> return $ _1 a .&& _2 a)
+  (\(a,b) -> a && b)
+
+iteA :: (Avs a, Avs b) => ALang t a b -> ALang t a b -> ALang t (Bool,a) b
+iteA = AIte
+
+assertA
+  :: (Avs a, Avs b)
+  => ALang t a Bool
+  -> ALang t a (Maybe b)
+  -> ALang t a (Maybe b)
+assertA p t = (p &&& idA) >>> iteA t (constA Nothing)
+
 -- Tuples
 
 tup2t3 :: (Avs a, Avs b, Avs c) => ALang t ((a,b),c) (a,b,c)

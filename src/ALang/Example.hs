@@ -11,6 +11,7 @@ import qualified Data.SBV.List as SList
 import Store.Model
 import Store.Model.Int
 import Symbol
+import Transact
 import Verify
 
 -- {-| Subtract the config amount from the state, if the amount is
@@ -25,39 +26,37 @@ import Verify
 --   -- Then, return the config value.
 --   >>> getConf
 
--- nonNegative :: (Avs a, Avs b) => AtlSpec IntReq Int a b
--- nonNegative = prePost
---   (\s -> s .>= 0)
---   (\s -> s .>= 0)
+takeStockTest :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
+takeStockTest = assertA ((tup2g2 &&& constA 0) >>> geA) $
+  flipA
+  >>> (reqs &&& tup2g1)
+  >>> iteA ((subU &&& idA) >>> asJust)
+           (constA Nothing)
+  where reqs = (atLeast &&& canSub) >>> andA
 
--- takeStockTest :: Fun (Context IntCap, Int) (Maybe (IntUpd, Int))
--- takeStockTest =
---   flipA
---   >>> (tup2g1 &&& reqs)
---   >>> distA
---   >>> (constA Nothing ||| (tup2g1 >>> (subU &&& idA) >>> asJust))
---   where reqs = (atLeast &&& canSub) >>> bothA
+takeStockUnsafe :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
+takeStockUnsafe = assertA ((tup2g2 &&& constA 0) >>> geA) $
+  flipA
+  >>> (reqs &&& tup2g1)
+  >>> iteA (((plusA 1 >>> subU) &&& idA) >>> asJust)
+           (constA Nothing)
+  where reqs = (atLeast &&& canSub) >>> andA
 
--- takeStockUnsafe :: Fun (Context IntCap, Int) (Maybe (IntUpd, Int))
--- takeStockUnsafe =
---   flipA
---   >>> (tup2g1 &&& reqs)
---   >>> distA
---   >>> (constA Nothing ||| (tup2g1 >>> ((plusA 1 >>> subU) &&& idA) >>> asJust))
---   where reqs = (atLeast &&& canSub) >>> bothA
+nonN :: Sy Int -> Sy Int -> Symbolic SBool
+nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
--- ge0 :: Sy Int -> Symbolic SBool
--- ge0 w = return $ w .>= 0
+test :: IO ()
+test = do
+  putStrLn "[Safe]"
+  (r1,r2) <- check intWitness takeStockTest nonN
+  putStrLn "spec:"
+  print r1
+  putStrLn "write:"
+  print r2
 
--- nonN :: Sy Int -> Sy Int -> Symbolic SBool
--- nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
-
--- test :: IO ()
--- test = do
---   putStrLn "Safe:"
---   print =<< prove (stateSpec intWitness takeStockTest ge0 nonN)
---   print =<< prove (capSpec intWitness takeStockTest ge0)
---   putStrLn ""
---   putStrLn "Unsafe:"
---   print =<< prove (stateSpec intWitness takeStockUnsafe ge0 nonN)
---   print =<< prove (capSpec intWitness takeStockUnsafe ge0)
+  putStrLn "[Unsafe]"
+  (r1,r2) <- check intWitness takeStockUnsafe nonN
+  putStrLn "spec:"
+  print r1
+  putStrLn "write:"
+  print r2

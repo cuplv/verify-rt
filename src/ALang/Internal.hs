@@ -21,6 +21,11 @@ data ALang t a b where
     => ALang t a1 b1
     -> ALang t a2 b2
     -> ALang t (Either a1 a2) (Either b1 b2)
+  AIte
+    :: (Avs a, Avs b)
+    => ALang t a b
+    -> ALang t a b
+    -> ALang t (Bool,a) b
   Arr :: (Avs a, Avs b) => (VSpec a b) -> (a -> b) -> ALang t a b
   FxTerm :: (Avs a, Avs b) => t a b -> ALang t a b
 
@@ -31,6 +36,7 @@ noFx a = case a of
   PipeRL a1 a2 -> PipeRL (noFx a1) (noFx a2)
   ATimes a1 a2 -> ATimes (noFx a1) (noFx a2)
   ASum a1 a2 -> ASum (noFx a1) (noFx a2)
+  AIte a1 a2 -> AIte (noFx a1) (noFx a2)
   Arr s f -> Arr s f
 
 type Fun a b = ALang NoFx a b
@@ -42,6 +48,9 @@ runFun m = case m of
   ASum a1 a2 -> \m -> case m of
                         Left a -> Left $ runFun a1 a
                         Right a -> Right $ runFun a2 a
+  AIte a1 a2 -> \m -> case m of
+                        (True,a) -> runFun a1 a
+                        (False,a) -> runFun a2 a
   Arr _ f -> f
 
 symbolize :: (Avs a, Avs b) => Fun a b -> VSpec a b
@@ -58,4 +67,8 @@ symbolize m a = case m of
     br <- symbolize mr (fromRight a)
     let b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
     return b
+  AIte mT mF -> do
+    bT <- symbolize mT (_2 a)
+    bF <- symbolize mF (_2 a)
+    return (ite (_1 a) bT bF)
   Arr s _ -> s a

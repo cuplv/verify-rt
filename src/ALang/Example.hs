@@ -46,17 +46,18 @@ takeStockUnsafe =
   >>> (constA Nothing ||| (tup2g1 >>> ((plusA 1 >>> subU) &&& idA) >>> asJust))
   where reqs = (atLeast &&& canSub) >>> bothA
 
-nonN :: (Avs w, Avs b) => PrePost IntCap w b
-nonN = PrePost
-  (\s _ -> return $ s .>= 0)
-  (\s _ -> return $ s .>= 0)
+ge0 :: Sy Int -> Symbolic SBool
+ge0 w = return $ w .>= 0
+
+nonN :: Sy Int -> Sy Int -> Symbolic SBool
+nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
 test :: IO ()
 test = do
   putStrLn "Safe:"
-  print =<< prove (stateSpec intWitness takeStockTest nonN)
-  print =<< prove (capSpec intWitness takeStockTest)
+  print =<< prove (stateSpec intWitness takeStockTest ge0 nonN)
+  print =<< prove (capSpec intWitness takeStockTest ge0)
   putStrLn ""
   putStrLn "Unsafe:"
-  print =<< prove (stateSpec intWitness takeStockUnsafe nonN)
-  print =<< prove (capSpec intWitness takeStockUnsafe)
+  print =<< prove (stateSpec intWitness takeStockUnsafe ge0 nonN)
+  print =<< prove (capSpec intWitness takeStockUnsafe ge0)

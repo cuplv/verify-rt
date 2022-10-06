@@ -15,7 +15,6 @@ library
                     , ALang.Internal
                     , Atl
                     , Compile
-                    , RLang
                     , Store.Model
                     , Store.Model.Int
                     , Store.Model.Map

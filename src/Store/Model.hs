@@ -17,64 +17,27 @@ class (Avs u, Avs (UState u)) => Update u where
   applyU :: u -> Fun (u, UState u) (UState u)
   symU :: u -> Sy u -> Sy (UState u) -> Sy (UState u) -> Symbolic SBool
 
-class (Avs k, Update (KUpd k)) => Capability k where
-  type KUpd k
-  reachC :: k -> Sy k -> Sy (KState k) -> Sy (KState k) -> Symbolic SBool
-  permitC :: k -> Fun (KUpd k, k) Bool
-  constrainC :: k -> Sy k -> SBV Bool
+class (Avs g, Avs (GState g)) => Grant g where
+  type GState g
+  readG :: g -> Sy g -> Sy (GState g) -> Sy (GState g) -> Symbolic SBool
+  writeG :: g -> Sy g -> Sy (GState g) -> Sy (GState g) -> Symbolic SBool
 
-type KState k = UState (KUpd k)
-
-class (Capability (Cap r)) => Request r where
-  type Cap r
-  emptyReq :: r
-  reqPred :: r -> Fun (Ctx r) Bool
-  seqR :: r -> r -> r
-  minReq :: ReqMake (Upd r) r
-
-reqMake :: (Request r, Avs w) => r -> ReqMake w r
-reqMake r = ReqMake { rmReq = const r
-                    , rmPred = sndA (reqPred r) >>> get2
-                    }
-
-data ReqMake w r
-  = ReqMake { rmReq :: w -> r
-            , rmPred :: Fun (w, Ctx r) Bool
+data Context g
+  = Context { ctxState :: GState g
+            , ctxGrant :: g
             }
 
-rmExtend 
-  :: (Avs w1, Avs w2, Request r)
-  => Fun w1 w2
-  -> ReqMake w2 r
-  -> ReqMake w1 r
-rmExtend f (ReqMake r p) = ReqMake (r . runFun f) (over1 f >>> p)
+instance (Grant g) => Avs (Context g) where
+  type Rep (Context g) = (Rep (GState g), Rep g)
+  toRep (Context s g) = (toRep s, toRep g)
 
-type Upd r = KUpd (Cap r)
+instance (Grant g) => AData (Context g) where
+  type Content (Context g) = (GState g, g)
+  conA = Arr return (\(a,b) -> Context a b)
+  deconA = Arr return (\(Context a b) -> (a,b))
 
-type State r = UState (Upd r)
+getState :: (Grant g) => ALang t (Context g) (GState g)
+getState = deconA >>> tup2g1
 
-data Context k
-  = Context { ctxState :: UState (KUpd k)
-            , ctxEnv :: k
-            , ctxCap :: k
-            }
-
-type Ctx r = Context (Cap r)
-
-instance (Capability k) => Avs (Context k) where
-  type Rep (Context k) = (Rep (UState (KUpd k)), Rep k, Rep k)
-  toRep (Context s e c) = (toRep s, toRep e, toRep c)
-
-instance (Capability k) => AData (Context k) where
-  type Content (Context k) = (UState (KUpd k), k, k)
-  conA = Arr return (\(a,b,c) -> Context a b c)
-  deconA = Arr return (\(Context a b c) -> (a,b,c))
-
-getState :: (Capability k) => ALang t (Context k) (UState (KUpd k))
-getState = deconA >>> tup3g1
-
-getEnv :: (Capability k) => ALang t (Context k) k
-getEnv = deconA >>> tup3g2
-
-getCap :: (Capability k) => ALang t (Context k) k
-getCap = deconA >>> tup3g3
+getGrant :: (Grant g) => ALang t (Context g) g
+getGrant = deconA >>> tup2g2

@@ -36,64 +36,49 @@ instance Update IntUpd where
     >>> sumA
   symU _ u s1 s2 = return $ s1 + u .== s2
 
-data IntCap = IntCap (Maybe Int)
-
-intWitness :: (IntCap, IntUpd)
+intWitness :: (IntG, IntUpd)
 intWitness = (undefined, undefined)
 
-instance Avs IntCap where
-  type Rep IntCap = Maybe Integer
-  toRep (IntCap m) = fromIntegral <$> m
+data IntG
+  = IntG { envSub :: Maybe Int
+         , capSub :: Maybe Int
+         }
 
-instance AData IntCap where
-  type Content IntCap = Maybe Int
-  conA = Arr return IntCap
-  deconA = Arr return (\(IntCap a) -> a)
+instance Avs IntG where
+  type Rep IntG = (Maybe Integer, Maybe Integer)
+  toRep (IntG e c) = (fromIntegral <$> e, fromIntegral <$> c)
 
-instance Capability IntCap where
-  type KUpd IntCap = IntUpd
-  reachC _ k s1 s2 = return $
+instance AData IntG where
+  type Content IntG = (Maybe Int, Maybe Int)
+  conA = Arr return (\(e,c) -> IntG e c)
+  deconA = Arr return (\(IntG e c) -> (e,c))
+
+instance Grant IntG where
+  type GState IntG = Int
+  readG _ g s1 s2 = return $
     (s1 .>= s2)
-    .&& SM.maybe (sTrue) (\n -> s1 .<= s2 + n) k
-  constrainC _ = SM.maybe sTrue (\n -> n .>= 0)
-  permitC _ = Arr
-    (\a -> return $ SM.maybe sTrue (\n -> n .>= (-(_1 a))) (_2 a))
-    (\(IntUpd u, IntCap m) -> case m of
-                                Just n -> n >= u
-                                Nothing -> True)
-  -- permitC _ =
-  --   fstA (deconA >>> negateA)
-  --   >>> sndA (deconA >>> m2eA)
-  --   >>> distA
-  --   >>> (constA True ||| leA)
+    .&& SM.maybe sTrue (\n -> s1 .<= s2 + n) (_1 g)
+  writeG _ g s1 s2 = return $
+    (s1 .>= s2)
+    .&& SM.maybe sTrue (\n -> s1 .<= s2 + n) (_2 g)
 
-lowerBound :: ALang t (Context IntCap) (Either () Int)
+lowerBound :: ALang t (Context IntG) (Either () Int)
 lowerBound =
-  (getState &&& (getEnv >>> deconA >>> m2eA))
+  (getState &&& (getGrant >>> deconA >>> tup2g1 >>> m2eA))
   >>> distA
   >>> (constA () +++ diffA)
 
-atLeast :: ALang t (Int, Context IntCap) Bool'
+atLeast :: ALang t (Int, Context IntG) Bool
 atLeast =
   sndA lowerBound
   >>> distA
-  >>> (constA (Left ()) ||| (leA >>> b2eA))
+  >>> (constA False ||| leA)
 
-canSub :: ALang t (Int, Context IntCap) (Either () ())
+canSub :: ALang t (Int, Context IntG) Bool
 canSub =
-  sndA (getCap >>> deconA >>> m2eA)
+  sndA (getGrant >>> deconA >>> tup2g2 >>> m2eA)
   >>> distA
-  >>> (constA (Right ()) ||| (leA >>> b2eA))
-
--- lowerBound' :: ALang t (Context IntCap) (Either () (Either () (Int,Int)))
--- lowerBound' =
---   -- Context IntCap
---   (lowerBound &&& (getCap >>> deconA >>> m2eA))
---   -- (Either () Int, Either () Int)
---   >>> distA
---   -- Either () (Either () Int, Int)
---   >>> onRight (flipA >>> distA)
---   -- Either () (Either () (Int,Int))
+  >>> (constA True ||| leA)
 
 data IntReq
   = IntReq { irAtLeast :: Maybe Int
@@ -102,7 +87,8 @@ data IntReq
            }
 
 instance Request IntReq where
-  type Cap IntReq = IntCap
+  type Gr IntReq = IntG
+  type Upd IntReq = IntUpd
   emptyReq = IntReq { irAtLeast = Nothing
                     , irAbsSub = Just 0
                     , irDiffSub = Nothing
@@ -115,7 +101,7 @@ instance Request IntReq where
                            >>> selectA
                  Nothing -> constA True
           b2 = case as of
-                 Just n -> getCap >>> deconA >>> m2eA
+                 Just n -> getGrant >>> deconA >>> tup2g2 >>> m2eA
                            >>> onLeft (constA False)
                            >>> onRight ((constA n &&& idA) >>> geA)
                            >>> selectA
@@ -124,7 +110,7 @@ instance Request IntReq where
 atLeastR :: ReqMake Int IntReq
 atLeastR = ReqMake
   (\i -> IntReq (Just i) Nothing Nothing)
-  (sndA (getEnv >>> deconA >>> m2eA)
+  (sndA (getGrant >>> deconA >>> tup2g1 >>> m2eA)
    >>> distA
    >>> (constA False ||| leA))
 

@@ -10,6 +10,8 @@ import Data.SBV.Tuple
 
 type Transact' k w b = Fun (Context k, w) (Maybe (KUpd k, b))
 
+type TransactS g = Sy (g, GState g) -> GState g -> Symbolic (Sy (Maybe (GState g)))
+
 symT
   :: (Capability k, Avs w, Avs b)
   => Transact' k w b

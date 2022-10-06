@@ -6,7 +6,6 @@
 module Atl where
 
 import ALang
-import RLang
 import Store.Model
 import Symbol
 
@@ -15,6 +14,36 @@ import Data.SBV.Either
 import Data.SBV.Set
 import Data.SBV.Tuple
 import qualified Data.SBV.List as SList
+
+class (Grant (Gr r), Update (Upd r)) => Request r where
+  type Upd r
+  type Gr r
+  emptyReq :: r
+  reqPred :: r -> Fun (Ctx r) Bool
+  seqR :: r -> r -> r
+  minReq :: ReqMake (Upd r) r
+
+type State r = UState (Upd r)
+
+type Ctx r = Context (Gr r)
+
+reqMake :: (Request r, Avs w) => r -> ReqMake w r
+reqMake r = ReqMake { rmReq = const r
+                    , rmPred = sndA (reqPred r) >>> get2
+                    }
+
+data ReqMake w r
+  = ReqMake { rmReq :: w -> r
+            , rmPred :: Fun (w, Ctx r) Bool
+            }
+
+rmExtend 
+  :: (Avs w1, Avs w2, Request r)
+  => Fun w1 w2
+  -> ReqMake w2 r
+  -> ReqMake w1 r
+rmExtend f (ReqMake r p) = ReqMake (r . runFun f) (over1 f >>> p)
+
 
 data Action r w a b where
   SlConfig :: Action r w a w

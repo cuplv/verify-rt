@@ -15,11 +15,15 @@ class (Avs u, Avs (UState u)) => Update u where
   idU :: u
   seqU :: u -> Fun (u,u) u
   applyU :: u -> Fun (u, UState u) (UState u)
+  symU :: u -> Sy u -> Sy (UState u) -> Sy (UState u) -> SBool
 
 class (Avs k, Update (KUpd k)) => Capability k where
   type KUpd k
+  reachC :: k -> Sy k -> Sy (KState k) -> Sy (KState k) -> SBool
   permitC :: k -> Fun (KUpd k, k) Bool
   constrainC :: k -> Sy k -> SBV Bool
+
+type KState k = UState (KUpd k)
 
 class (Capability (Cap r)) => Request r where
   type Cap r

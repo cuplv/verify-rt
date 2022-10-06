@@ -32,32 +32,38 @@ stateSpec
   -> Symbolic SBool
 stateSpec (y,z) f (PrePost p q) = do
   w <- forall "w"
-  s <- forall "state"
+  s <- forall "local state"
   env <- forall "env"
+  constrain $ constrainC y env
   cap <- forall "cap"
+  constrain $ constrainC y cap
+
+  sPre <- forall "pre state"
+  constrain $ reachC y env s sPre
 
   r <- symT f (s,env,cap) w
-
-  ue <- exists "ue"
-  ueC <- symbolize (permitC y) (tuple (ue,env))
-  s1 <- symbolize (applyU z) (tuple (ue,s))
-
-  pTrue <- p s1 w
-
   let u = _1 (SM.fromJust r)
       b = _2 (SM.fromJust r)
 
-  ua <- forall "ua"
-  uaC <- symbolize (permitC y) (tuple (ua,env))
-  u' <- symbolize (seqU z) (tuple (ua,u))
-  s2 <- symbolize (applyU z) (tuple (u',s))
+  sPost <- forall "post state"
+  constrain $ symU z u sPre sPost
 
-  qt' <- q s2 b
+  pTrue <- p sPre w
+  qt' <- q sPost b
   let qTrue = SM.maybe sTrue (const qt') r
+  return $ pTrue .=> qTrue
 
-  return $ sNot (constrainC y env .&& constrainC y cap)
-           .|| (ueC .&& sNot pTrue)
-           .|| (uaC .=> qTrue)
+-- stateSpec2
+--   :: (Capability k, Avs w, Avs b)
+--   => (k, KUpd k)
+--   -> Transact' k w b
+--   -> (Sy (UState (KUpd k)) -> Sy (UState (KUpd k)) -> SBool)
+--   -> Symbolic SBool
+-- stateSpec2 (y,z) f o = do
+--   w <- forall "w"
+--   s <- forall "state"
+--   env <- forall "env"
+--   undefined
 
 capSpec
   :: (Capability k, Avs w, Avs b)

@@ -34,6 +34,7 @@ instance Update IntUpd where
   applyU _ =
     fstA deconA
     >>> sumA
+  symU _ u s1 s2 = s1 + u .== s2
 
 data IntCap = IntCap (Maybe Int)
 
@@ -51,6 +52,9 @@ instance AData IntCap where
 
 instance Capability IntCap where
   type KUpd IntCap = IntUpd
+  reachC _ k s1 s2 =
+    (s1 .>= s2)
+    .&& SM.maybe (sTrue) (\n -> s1 .<= s2 + n) k
   constrainC _ = SM.maybe sTrue (\n -> n .>= 0)
   permitC _ = Arr
     (\a -> return $ SM.maybe sTrue (\n -> n .>= (-(_1 a))) (_2 a))

@@ -12,25 +12,58 @@ import Data.SBV.Control (registerUISMTFunction)
 import Data.SBV.Internals (SolverContext)
 import Data.SBV.Set
 
--- data Map
+data Map
 
--- mkUninterpretedSort ''Map
+mkUninterpretedSort ''Map
 
--- data Key
+data Key
 
--- mkUninterpretedSort ''Key
+mkUninterpretedSort ''Key
 
--- data MapMod
+data Upd
 
--- mkUninterpretedSort ''MapMod
+mkUninterpretedSort ''Upd
 
--- type MapU = SKey -> MapMod
+memberM :: SKey -> SMap -> SBool
+memberM = uninterpret "memberM"
 
--- memberM :: SKey -> SMap -> SBool
--- memberM = uninterpret "memberM"
+matchesM :: SKey -> SMap -> SMap -> SBool
+matchesM = uninterpret "matchesM"
 
--- insertM :: SMapMod
--- insertM = uninterpret "insertM"
+derivesM :: SKey -> SMap -> SMap -> SBool
+derivesM = uninterpret "derivesM"
+
+updM :: SUpd -> SMap -> SMap -> SBool
+updM = uninterpret "updM"
+
+mapAx =
+  -- Matches with membership implies derives
+  ["(assert (forall ((k Key) (m1 Map) (m2 Map))"
+  ,"  (=> (and (matchesM k m1 m2) (memberM k m1) (memberM k m2)) (derivesM k m1 m2))))"
+  -- Derives implies membership
+  ,"(assert (forall ((k Key) (m1 Map) (m2 Map))"
+  ,"  (=> (derivesM k m1 m2) (and (memberM k m1) (memberM k m2)))))"
+  -- Derives is reflexive when member
+  ,"(assert (forall ((k Key) (m1 Map))"
+  ,"  (=> (memberM k m1) (derivesM k m1 m1))))"
+  -- Derives is transitive
+  ,"(assert (forall ((k Key) (m1 Map) (m2 Map) (m3 Map))"
+  ,"  (=> (and (derivesM k m1 m2) (derivesM k m2 m3)) (derivesM k m1 m3))))"
+  -- Matches is symmetric
+  ,"(assert (forall ((k Key) (m1 Map) (m2 Map))"
+  ,"  (=> (matchesM k m1 m2) (matchesM k m2 m1))))"
+  -- Matches is transitive
+  ,"(assert (forall ((k Key) (m1 Map) (m2 Map) (m3 Map))"
+  ,"  (=> (and (matchesM k m1 m2) (matchesM k m2 m3)) (matchesM k m1 m3))))"
+  -- Matches implies membership agreement
+  ,"(assert (forall ((k Key) (m1 Map) (m2 Map))"
+  ,"  (=> (matchesM k m1 m2) (=> (memberM k m1) (memberM k m2)))))"
+  -- Updates are total functions
+  ,"(assert (forall ((u Upd) (m1 Map) (m2 Map) (m3 Map))"
+  ,"  (=> (and (updM u m1 m2) (updM u m1 m3)) (= m2 m3))))"
+  ,"(assert (forall ((u Upd) (m1 Map))"
+  ,"  (exists ((m2 Map)) (updM u m1 m2))))"
+  ]
 
 -- insertAx =
 --   ["(assert (forall ((k Key) (m1 Map) (m2 Map))"
@@ -63,40 +96,39 @@ import Data.SBV.Set
 -- mapMod :: SMapMod -> SMap -> SMap -> SBool
 -- mapMod = uninterpret "mapMod"
 
--- matches :: SKey -> SMap -> SMap -> SBool
--- matches = uninterpret "matches"
-
--- ancestor :: SKey -> SMap -> SMap -> SBool
--- ancestor = uninterpret "ancestor"
 
 -- ancestorAx =
 --   ["(assert (forall ((k Key) (m1 Map)) (ancestor k m1 m1)))"
 --   ,"(assert (forall ((k Key) (m1 Map) (m2 Map) (m3 Map)) (=> (and (ancestor k m1 m2) (ancestor k m2 m3)) (ancestor k m1 m3))))"
 --   ]
 
--- axioms :: Symbolic ()
--- axioms = do
---   addAxiom "ancestor" ancestorAx
---   addAxiom "insert" insertAx 
---   k1 <- forall_
---   m1 <- forall_
---   m2 <- forall_
---   constrain $
---     mapMod (insert k1) m1 m2
---   constrain $
---     member k1 m1
---     .|| matches k1 m1 m2
---     .|| ancestor k1 m1 m2
+axioms :: Symbolic ()
+axioms = do
+  addAxiom "mapAx" mapAx
+  u1 <- forall_
+  k1 <- forall_
+  m1 <- forall_
+  m2 <- forall_
+  constrain $
+    memberM k1 m1
+    .|| matchesM k1 m1 m2
+    .|| derivesM k1 m1 m2
+    .|| updM u1 m1 m2
 
--- test :: IO ThmResult
--- test = do
---   proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
---     axioms
---     k1 <- forall_
---     m1 <- forall_
---     m2 <- forall_
---     k2 <- forall_
---     constrain $ k1 ./= k2
---     constrain $ mapMod (insert k1) m1 m2
---     constrain $ sNot (member k2 m1)
---     return $ sNot (member k2 m2)
+test :: IO ThmResult
+test = do
+  proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
+    axioms
+    k <- forall_
+    m1 <- forall_
+    m2 <- forall_
+    constrain $ memberM k m1
+    return $ (matchesM k m1 m2) .=> memberM k m2
+    -- k1 <- forall_
+    -- m1 <- forall_
+    -- m2 <- forall_
+    -- k2 <- forall_
+    -- constrain $ k1 ./= k2
+    -- constrain $ mapMod (insert k1) m1 m2
+    -- constrain $ sNot (member k2 m1)
+    -- return $ sNot (member k2 m2)

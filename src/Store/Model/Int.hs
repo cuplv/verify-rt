@@ -18,11 +18,12 @@ data IntUpd = IntUpd Int deriving (Show)
 instance Avs IntUpd where
   type Rep IntUpd = Integer
   toRep (IntUpd i) = pure . fromIntegral $ i
+  repc (IntUpd i) = repc i
 
 instance AData IntUpd where
   type Content IntUpd = Int
-  conA = Arr return IntUpd
-  deconA = Arr return (\(IntUpd n) -> n)
+  conA = ArrF return IntUpd
+  deconA = ArrF return (\(IntUpd n) -> n)
 
 instance Update IntUpd where
   type UState IntUpd = Int
@@ -48,11 +49,12 @@ instance Avs IntG where
   type Rep IntG = (Maybe Integer, Maybe Integer)
   toRep (IntG e c) = fmap tuple $
     (,) <$> toRep e <*> toRep c
+  repc (IntG e c) = repc (e,c)
 
 instance AData IntG where
   type Content IntG = (Maybe Int, Maybe Int)
-  conA = Arr return (\(e,c) -> IntG e c)
-  deconA = Arr return (\(IntG e c) -> (e,c))
+  conA = ArrF return (\(e,c) -> IntG e c)
+  deconA = ArrF return (\(IntG e c) -> (e,c))
 
 instance Grant IntG where
   type GState IntG = Int
@@ -90,6 +92,8 @@ data IntReq
 instance Request IntReq where
   type Gr IntReq = IntG
   type Upd IntReq = IntUpd
+  seqR = undefined
+  minReq = undefined
   emptyReq = IntReq { irAtLeast = Nothing
                     , irAbsSub = Just 0
                     , irDiffSub = Nothing

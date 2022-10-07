@@ -32,11 +32,12 @@ instance (Grant g) => Avs (Context g) where
   type Rep (Context g) = (Rep (GState g), Rep g)
   toRep (Context s g) = fmap tuple $
     (,) <$> toRep s <*> toRep g
+  repc (Context s g) = repc (s,g)
 
 instance (Grant g) => AData (Context g) where
   type Content (Context g) = (GState g, g)
-  conA = Arr return (\(a,b) -> Context a b)
-  deconA = Arr return (\(Context a b) -> (a,b))
+  conA = ArrF return (\(a,b) -> Context a b)
+  deconA = ArrF return (\(Context a b) -> (a,b))
 
 getState :: (Grant g) => ALang t (Context g) (GState g)
 getState = deconA >>> tup2g1

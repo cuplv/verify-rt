@@ -26,7 +26,8 @@ data ALang t a b where
     => ALang t a b
     -> ALang t a b
     -> ALang t (Bool,a) b
-  Arr :: (Avs a, Avs b) => (VSpec a b) -> (a -> b) -> ALang t a b
+  ArrF :: (Avs a, Avs b) => FSpec a b -> (a -> b) -> ALang t a b
+  ArrP :: (Avs a, Avs b) => PSpec a b -> (a -> b) -> ALang t a b
   FxTerm :: (Avs a, Avs b) => t a b -> ALang t a b
 
 data NoFx a b
@@ -37,7 +38,8 @@ noFx a = case a of
   ATimes a1 a2 -> ATimes (noFx a1) (noFx a2)
   ASum a1 a2 -> ASum (noFx a1) (noFx a2)
   AIte a1 a2 -> AIte (noFx a1) (noFx a2)
-  Arr s f -> Arr s f
+  ArrF s f -> ArrF s f
+  ArrP p f -> ArrP p f
 
 type Fun a b = ALang NoFx a b
 
@@ -51,24 +53,29 @@ runFun m = case m of
   AIte a1 a2 -> \m -> case m of
                         (True,a) -> runFun a1 a
                         (False,a) -> runFun a2 a
-  Arr _ f -> f
+  ArrF _ f -> f
+  ArrP _ f -> f
 
-symbolize :: (Avs a, Avs b) => Fun a b -> VSpec a b
-symbolize m a = case m of
+symbolize :: (Avs a, Avs b) => Fun a b -> PSpec a b
+symbolize m a b = case m of
   PipeRL ml mr -> do
-    b <- symbolize mr a
-    symbolize ml b
-  ATimes m1 m2 -> do 
-    b1 <- symbolize m1 (_1 a)
-    b2 <- symbolize m2 (_2 a)
-    return $ tuple (b1, b2)
+    z <- forall "step"
+    constrain =<< symbolize mr a z
+    symbolize ml z b
+  ATimes m1 m2 -> (.&&)
+    <$> symbolize m1 (_1 a) (_1 b)
+    <*> symbolize m2 (_2 a) (_2 b)
   ASum ml mr -> do
-    bl <- symbolize ml (fromLeft a)
-    br <- symbolize mr (fromRight a)
-    let b = Data.SBV.Either.either (const $ sLeft bl) (const $ sRight br) a
-    return b
+    pl <- symbolize ml (fromLeft a) (fromLeft b)
+    pr <- symbolize mr (fromRight a) (fromRight b)
+    return $
+      (isLeft a .=> (isLeft b .&& pl))
+      .&& (isRight a .=> (isRight b .&& pr))
   AIte mT mF -> do
-    bT <- symbolize mT (_2 a)
-    bF <- symbolize mF (_2 a)
-    return (ite (_1 a) bT bF)
-  Arr s _ -> s a
+    pT <- symbolize mT (_2 a) b
+    pF <- symbolize mF (_2 a) b
+    return $ ite (_1 a) pT pF
+  ArrF f _ -> do
+    b' <- f a
+    return (b' .== b)
+  ArrP p _ -> p a b

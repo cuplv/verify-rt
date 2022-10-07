@@ -45,18 +45,26 @@ takeStockUnsafe = assertA ((tup2g2 &&& constA 0) >>> geA) $
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
 nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
+trueThm :: ThmResult -> Bool
+trueThm = not . modelExists
+
 test :: IO ()
 test = do
-  putStrLn "[Safe]"
   (r1,r2) <- check intWitness takeStockTest nonN
-  putStrLn "spec:"
-  print r1
-  putStrLn "write:"
-  print r2
+  (r3,r4) <- check intWitness takeStockUnsafe nonN
+  if not $ trueThm r1
+     then putStrLn "Error: good failed spec" >> print r1
+     else return ()
+  if not $ trueThm r2
+     then putStrLn "Error: good failed write" >> print r2
+     else return ()
+  if trueThm r3
+     then putStrLn "Error: bad passed spec" >> print r3
+     else return ()
+  if trueThm r4
+     then putStrLn "Error: bad passed write" >> print r4
+     else return ()
 
-  putStrLn "[Unsafe]"
-  (r1,r2) <- check intWitness takeStockUnsafe nonN
-  putStrLn "spec:"
-  print r1
-  putStrLn "write:"
-  print r2
+  if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4)
+     then putStrLn "[OK]"
+     else putStrLn "[ERROR]"

@@ -57,13 +57,13 @@ import Data.SBV.Tuple
 -- Fundamental
 
 idA :: (Avs a) => ALang t a a
-idA = Arr return id
+idA = ArrF return id
 
 funA :: (Avs a, Avs b) => (a -> b) -> ALang t a b
-funA  = Arr (const forall_)
+funA  = ArrF (const forall_)
 
 constA :: (Avs a, Avs b) => b -> ALang t a b
-constA b = Arr (const $ toRep b) (const b)
+constA b = ArrF (const $ toRep b) (const b)
 
 forget :: (Avs a) => ALang t a ()
 forget = constA ()
@@ -71,13 +71,13 @@ forget = constA ()
 -- Bools
 
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
-andAllA ts = Arr
-  (\a -> do bs <- mapM (\t -> symbolize t a) ts
-            return $ foldr (.&&) sTrue bs)
+andAllA ts = ArrP
+  (\a b -> do bs <- mapM (\t -> symbolize t a sTrue) ts
+              return $ foldr (.&&) sTrue bs .== b)
   (\a -> and (map (\t -> runFun t a) ts))
 
 andA :: ALang t (Bool,Bool) Bool
-andA = Arr
+andA = ArrF
   (\a -> return $ _1 a .&& _2 a)
   (\(a,b) -> a && b)
 
@@ -94,44 +94,44 @@ assertA p t = (p &&& idA) >>> iteA t (constA Nothing)
 -- Tuples
 
 tup2t3 :: (Avs a, Avs b, Avs c) => ALang t ((a,b),c) (a,b,c)
-tup2t3 = Arr (\a -> return $ tuple (_1 (_1 a), _2 (_1 a), _2 a))
+tup2t3 = ArrF (\a -> return $ tuple (_1 (_1 a), _2 (_1 a), _2 a))
              (\((a,b),c) -> (a,b,c))
 
 tup3t2 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) ((a,b),c)
-tup3t2 = Arr (\a -> return $ tuple (tuple (_1 a, _2 a), _3 a))
+tup3t2 = ArrF (\a -> return $ tuple (tuple (_1 a, _2 a), _3 a))
              (\(a,b,c) -> ((a,b),c))
 
 forkA :: (Avs a) => ALang t a (a,a) 
-forkA = Arr (\a -> return $ tuple (a,a)) (\a -> (a,a))
+forkA = ArrF (\a -> return $ tuple (a,a)) (\a -> (a,a))
 
 flipA :: (Avs a, Avs b) => ALang t (a,b) (b,a)
-flipA = Arr (\a -> return $ tuple (_2 a, _1 a)) (\(a,b) -> (b,a))
+flipA = ArrF (\a -> return $ tuple (_2 a, _1 a)) (\(a,b) -> (b,a))
 
 class Get1 x a where
   get1 :: ALang t x a
 
 instance (Avs a, Avs b) => Get1 (a,b) a where
-  get1 = Arr (return . _1) fst
+  get1 = ArrF (return . _1) fst
 
 
 class Get2 x a where
   get2 :: ALang t x a
 
 instance (Avs a, Avs b) => Get2 (a,b) b where
-  get2 = Arr (return . _2) snd
+  get2 = ArrF (return . _2) snd
 
 
 class Set1 x y a where
   set1 :: ALang t (a,x) y 
 
 instance (Avs a, Avs b, Avs c) => Set1 (a,b) (c,b) c where
-  set1 = Arr (\a -> return $ tuple (_1 a, _2 (_2 a))) (\(a,(_,b)) -> (a,b))
+  set1 = ArrF (\a -> return $ tuple (_1 a, _2 (_2 a))) (\(a,(_,b)) -> (a,b))
 
 class Set2 x y a where
   set2 :: ALang t (a,x) y 
 
 instance (Avs a, Avs b, Avs c) => Set2 (a,b) (a,c) c where
-  set2 = Arr (\a -> return $ tuple (_1 (_2 a), _1 a)) (\(a,(b,_)) -> (b,a))
+  set2 = ArrF (\a -> return $ tuple (_1 (_2 a), _1 a)) (\(a,(b,_)) -> (b,a))
 
 over1
   :: (Avs x, Avs y, Avs a, Avs b, Get1 x a, Set1 x y b)
@@ -139,10 +139,10 @@ over1
 over1 f = forkA >>> ATimes (get1 >>> f) idA >>> set1
 
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
-tup2g1 = Arr (return . _1) fst
+tup2g1 = ArrF (return . _1) fst
 
 tup2g2 :: (Avs a, Avs b) => ALang t (a,b) b
-tup2g2 = Arr (return . _2) snd
+tup2g2 = ArrF (return . _2) snd
 
 fstA :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t (a,c) (b,c)
 fstA = over1
@@ -203,10 +203,10 @@ getRight :: (Avs a, Avs b) => ALang t (Either a b, b) b
 getRight = flipA >>> distA >>> (tup2g1 ||| tup2g2)
 
 asLeft :: (Avs a, Avs b) => ALang t a (Either a b)
-asLeft = Arr (\a -> return $ sLeft a) Left
+asLeft = ArrF (\a -> return $ sLeft a) Left
 
 asRight :: (Avs a, Avs b) => ALang t b (Either a b)
-asRight = Arr (\a -> return $ sRight a) Right
+asRight = ArrF (\a -> return $ sRight a) Right
 
 onLeft :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t (Either a c) (Either b c)
 onLeft f = ASum f idA
@@ -226,13 +226,13 @@ flattenA
 flattenA = undefined
 
 selectA :: (Avs a) => ALang t (Either a a) a
-selectA = Arr (\a -> return $ Data.SBV.Either.either id id a)
+selectA = ArrF (\a -> return $ Data.SBV.Either.either id id a)
               (\m -> case m of
                        Right a -> a
                        Left a -> a)
 
 distA :: (Avs a, Avs b, Avs c) => ALang t (a, Either b c) (Either (a,b) (a,c)) 
-distA = Arr f1 f2
+distA = ArrF f1 f2
   where f1 a = return $ bimap
                           (\al -> tuple (_1 a, al))
                           (\ar -> tuple (_1 a, ar))
@@ -245,7 +245,7 @@ undistA :: (Avs a, Avs b, Avs c) => ALang t (Either (a,b) (a,c)) (a, Either b c)
 undistA = (ASum get1 get1 >>> selectA) &&& ASum get2 get2
 
 b2eA :: ALang t Bool (Either () ())
-b2eA = Arr (\a -> return (ite a (sRight su) (sLeft su)))
+b2eA = ArrF (\a -> return (ite a (sRight su) (sLeft su)))
            (\a -> if a
                      then Right ()
                      else Left ())
@@ -254,19 +254,19 @@ e2bA :: (Avs a, Avs b) => ALang t (Either a b) Bool
 e2bA = ASum (constA False) (constA True) >>> selectA
 
 asJust :: (Avs a) => ALang t a (Maybe a)
-asJust = Arr (\a -> return $ SM.sJust a) Just
+asJust = ArrF (\a -> return $ SM.sJust a) Just
 
 fromJust :: (Avs a) => a -> ALang t (Maybe a) a
 fromJust a = m2eA >>> ASum (constA a) idA >>> selectA
 
 m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
-m2eA = Arr (return . SM.maybe (literal (Left ())) sRight)
+m2eA = ArrF (return . SM.maybe (literal (Left ())) sRight)
            (\m -> case m of
                     Just a -> Right a
                     Nothing -> Left ())
 
 e2mA :: (Avs a, Avs b) => ALang t (Either a b) (Maybe b)
-e2mA = Arr (return . Data.SBV.Either.either (\_ -> literal Nothing) SM.sJust)
+e2mA = ArrF (return . Data.SBV.Either.either (\_ -> literal Nothing) SM.sJust)
            (\m -> case m of
                     Left _ -> Nothing
                     Right a -> Just a)
@@ -277,7 +277,7 @@ onJust f = m2eA >>> ASum idA f >>> e2mA
 -- Ints
 
 sumA :: ALang t (Int,Int) Int
-sumA = Arr (\a -> return (_1 a + _2 a)) (\(a,b) -> a + b)
+sumA = ArrF (\a -> return (_1 a + _2 a)) (\(a,b) -> a + b)
 
 diffA :: ALang t (Int,Int) Int
 diffA = over2 negateA >>> sumA
@@ -289,13 +289,13 @@ minusA :: Int -> ALang t Int Int
 minusA n = idA &&& constA n >>> diffA
 
 negateA :: ALang t Int Int
-negateA = Arr (\a -> return (-a)) (\a -> (-a))
+negateA = ArrF (\a -> return (-a)) (\a -> (-a))
 
 leA :: ALang t (Int,Int) Bool
-leA = Arr (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
+leA = ArrF (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
 
 geA :: ALang t (Int,Int) Bool
-geA = Arr (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)
+geA = ArrF (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)
 
 -- Datatype construction
 

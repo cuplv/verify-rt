@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -6,6 +10,9 @@ module Symbol where
 
 import Data.SBV
 import Data.SBV.Either
+import Data.SBV.List ((.:),nil)
+import Data.SBV.Maybe (sJust, sNothing)
+import Data.SBV.Tuple
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -13,55 +20,65 @@ import qualified Data.Map as Map
 
 class (SymVal (Rep a)) => Avs a where
   type Rep a
-  toRep :: a -> Rep a
+  toRep :: a -> Symbolic (SBV (Rep a))
 
 type Sy a = SBV (Rep a)
 
 instance Avs () where
   type Rep () = ()
-  toRep = const ()
+  toRep = pure . literal
 
 instance (Avs a, Avs b) => Avs (a,b) where
   type Rep (a,b) = (Rep a, Rep b)
-  toRep (a,b) = (toRep a, toRep b)
+  toRep (a,b) = fmap tuple $
+    (,) <$> toRep a <*> toRep b
 
 instance (Avs a, Avs b, Avs c) => Avs (a,b,c) where
   type Rep (a,b,c) = (Rep a, Rep b, Rep c)
-  toRep (a,b,c) = (toRep a, toRep b, toRep c)
+  toRep (a,b,c) = fmap tuple $
+    (,,) <$> toRep a <*> toRep b <*> toRep c
 
 instance (Avs a, Avs b, Avs c, Avs d) => Avs (a,b,c,d) where
   type Rep (a,b,c,d) = (Rep a, Rep b, Rep c, Rep d)
-  toRep (a,b,c,d) = (toRep a, toRep b, toRep c, toRep d)
+  toRep (a,b,c,d) = fmap tuple $
+    (,,,) <$> toRep a <*> toRep b <*> toRep c <*> toRep d
 
 instance Avs Bool where
   type Rep Bool = Bool
-  toRep = id
-
-instance (Avs a) => Avs (Maybe a) where
-  type Rep (Maybe a) = Maybe (Rep a)
-  toRep (Just a) = Just (toRep a)
-  toRep Nothing = Nothing
-
-instance (Avs a, Avs b) => Avs (Either a b) where
-  type Rep (Either a b) = Either (Rep a) (Rep b)
-  toRep (Left a) = Left (toRep a)
-  toRep (Right b) = Right (toRep b)
-
-instance Avs Int where
-  type Rep Int = Integer
-  toRep = fromIntegral
-
-instance (Ord (Rep k), Avs k) => Avs (Map k w) where
-  type Rep (Map k w) = [Rep k]
-  toRep = map toRep . Map.keys
-
-instance (Avs a) => Avs [a] where
-  type Rep [a] = [Rep a]
-  toRep = map toRep
+  toRep = pure . literal
 
 instance Avs Char where
   type Rep Char = Char
-  toRep = id
+  toRep = pure . literal
+
+instance (Avs a) => Avs (Maybe a) where
+  type Rep (Maybe a) = Maybe (Rep a)
+  toRep (Just a) = pure . sJust =<< toRep a
+  toRep Nothing = pure sNothing
+
+instance (Avs a, Avs b) => Avs (Either a b) where
+  type Rep (Either a b) = Either (Rep a) (Rep b)
+  toRep (Left a) = pure . sLeft =<< toRep a
+  toRep (Right b) = pure . sRight =<< toRep b
+
+instance Avs Int where
+  type Rep Int = Integer
+  toRep = pure . literal . fromIntegral
+
+instance (Avs a) => Avs [a] where
+  type Rep [a] = [Rep a]
+  toRep (a:as) = (.:) <$> toRep a <*> toRep as
+  toRep [] = pure nil
+
+data NoRep
+
+mkUninterpretedSort ''NoRep
+
+newtype Some a = Some a deriving (Show,Eq,Ord)
+
+instance Avs (Some a) where
+  type Rep (Some a) = NoRep
+  toRep = const forall_
 
 data SSpec d a b
   = SSpec (Sy d -> Sy a -> Symbolic (Sy d, Sy b))
@@ -88,26 +105,5 @@ bimapM
   -> SEither a1 a2
   -> m (SEither b1 b2)
 bimapM ml mr = eitherM (\a -> sLeft <$> ml a) (\a -> sRight <$> mr a)
-
--- data TSpec d a b
---   = TSpec { tSpec :: Sy d -> Sy a -> Sy d -> Sy b -> Symbolic SBool
---           }
-
--- instance (Avs d, Avs a, Avs b) => Semigroup (TSpec d a b) where
---   TSpec m1 <> TSpec m2 = TSpec
---     (\a d b d' -> do r1 <- m1 a d b d' 
---                      r2 <- m2 a d b d'
---                      return (r1 .&& r2))
-
--- instance (Avs d, Avs a, Avs b) => Monoid (TSpec d a b) where
---   mempty = TSpec (\_ _ _ _ -> return sTrue)
-
--- invarS :: (Avs d, Avs a, Avs b) => (Sy d -> Symbolic SBool) -> TSpec d a b
--- invarS f = TSpec (\d _ d' _ -> do r1 <- f d
---                                   r2 <- f d'
---                                   return $ r1 .=> r2)
-
--- prePostS :: (Avs d, Avs a, Avs b) => (Sy d -> Sy d -> Symbolic SBool) -> TSpec d a b
--- prePostS f = TSpec (\d _ d' _ -> f d d')
 
 type Binr s = s -> s -> Symbolic SBool

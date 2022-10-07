@@ -17,7 +17,7 @@ data IntUpd = IntUpd Int deriving (Show)
 
 instance Avs IntUpd where
   type Rep IntUpd = Integer
-  toRep (IntUpd i) = fromIntegral i
+  toRep (IntUpd i) = pure . fromIntegral $ i
 
 instance AData IntUpd where
   type Content IntUpd = Int
@@ -46,7 +46,8 @@ data IntG
 
 instance Avs IntG where
   type Rep IntG = (Maybe Integer, Maybe Integer)
-  toRep (IntG e c) = (fromIntegral <$> e, fromIntegral <$> c)
+  toRep (IntG e c) = fmap tuple $
+    (,) <$> toRep e <*> toRep c
 
 instance AData IntG where
   type Content IntG = (Maybe Int, Maybe Int)

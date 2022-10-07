@@ -30,7 +30,8 @@ data Context g
 
 instance (Grant g) => Avs (Context g) where
   type Rep (Context g) = (Rep (GState g), Rep g)
-  toRep (Context s g) = (toRep s, toRep g)
+  toRep (Context s g) = fmap tuple $
+    (,) <$> toRep s <*> toRep g
 
 instance (Grant g) => AData (Context g) where
   type Content (Context g) = (GState g, g)

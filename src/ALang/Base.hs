@@ -63,7 +63,7 @@ funA :: (Avs a, Avs b) => (a -> b) -> ALang t a b
 funA  = Arr (const forall_)
 
 constA :: (Avs a, Avs b) => b -> ALang t a b
-constA b = Arr (const . return . literal $ toRep b) (const b)
+constA b = Arr (const $ toRep b) (const b)
 
 forget :: (Avs a) => ALang t a ()
 forget = constA ()

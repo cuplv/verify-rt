@@ -6,7 +6,6 @@
 module Symbol.Map
   ( SMap
   , SKey
-  , SValue
   , test
   ) where
 
@@ -15,6 +14,7 @@ import Prelude hiding (insert)
 import Data.SBV
 import Data.SBV.Control (registerUISMTFunction)
 import Data.SBV.Internals (SolverContext)
+import Data.SBV.Set
 
 data Map
 
@@ -24,40 +24,48 @@ data Key
 
 mkUninterpretedSort ''Key
 
-data Value
+data MapMod
 
-mkUninterpretedSort ''Value
+mkUninterpretedSort ''MapMod
 
-data Update
+type MapU = SKey -> MapMod
 
-mkUninterpretedSort ''Update
+memberM :: SKey -> SMap -> SBool
+memberM = uninterpret "memberM"
 
-member :: SKey -> SMap -> SBool
-member = uninterpret "member"
-
-insert :: SKey -> SUpdate
-insert = uninterpret "insert"
+insertM :: SMapMod
+insertM = uninterpret "insertM"
 
 insertAx =
   ["(assert (forall ((k Key) (m1 Map) (m2 Map))"
-  ,"  (=> (update (insert k) m1 m2)"
+  ,"  (=> (mapMod (insert k) m1 m2)"
   ,"      (member k m2))))"
   ,"(assert (forall ((k1 Key) (k2 Key) (m1 Map) (m2 Map))"
-  ,"  (=> (and (update (insert k1) m1 m2) (distinct k1 k2) (member k2 m1))"
+  ,"  (=> (and (mapMod (insert k1) m1 m2) (distinct k1 k2) (member k2 m1))"
   ,"      (matches k2 m1 m2))))"
   ,"(assert (forall ((k1 Key) (k2 Key) (m1 Map) (m2 Map))"
-  ,"  (=> (and (update (insert k1) m1 m2) (distinct k1 k2) (not (member k2 m1)))"
+  ,"  (=> (and (mapMod (insert k1) m1 m2) (distinct k1 k2) (not (member k2 m1)))"
   ,"      (not (member k2 m2)))))"
   ]
 
-modify :: SKey -> SUpdate
-modify = uninterpret "modify"
+modifyM :: SMapMod
+modifyM = uninterpret "modifyM"
 
-delete :: SKey -> SUpdate
-delete = uninterpret "delete"
+deleteM :: SMapMod
+deleteM = uninterpret "deleteM"
 
-update :: SUpdate -> SMap -> SMap -> SBool
-update = uninterpret "update"
+retainM :: SMapMod
+retainM = uninterpret "retainM"
+
+seqMapMod :: SMapMod -> SMapMod -> SMapMod
+seqMapMod x1 x2 = ite (x2 .== retainM) x1 x2
+
+mapModAx =
+  ["(assert (forall ((x MapU))"
+  ,"  (or (= x insertM) (= x modifyM) (= x deleteM) (= x retainM))"]
+
+mapMod :: SMapMod -> SMap -> SMap -> SBool
+mapMod = uninterpret "mapMod"
 
 matches :: SKey -> SMap -> SMap -> SBool
 matches = uninterpret "matches"
@@ -78,7 +86,7 @@ axioms = do
   m1 <- forall_
   m2 <- forall_
   constrain $
-    update (insert k1) m1 m2
+    mapMod (insert k1) m1 m2
   constrain $
     member k1 m1
     .|| matches k1 m1 m2
@@ -93,6 +101,6 @@ test = do
     m2 <- forall_
     k2 <- forall_
     constrain $ k1 ./= k2
-    constrain $ update (insert k1) m1 m2
+    constrain $ mapMod (insert k1) m1 m2
     constrain $ sNot (member k2 m1)
     return $ sNot (member k2 m2)

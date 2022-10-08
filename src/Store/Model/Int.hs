@@ -57,13 +57,24 @@ instance AData IntG where
   deconA = ArrF return (\(IntG e c) -> (e,c))
 
 instance Grant IntG where
-  type GState IntG = Int
+  type GUpd IntG = IntUpd
   readG _ g s1 s2 = return $
     (s1 .>= s2)
     .&& SM.maybe sTrue (\n -> s1 .<= s2 + n) (_1 g)
   writeG _ g s1 s2 = return $
     (s1 .>= s2)
     .&& SM.maybe sTrue (\n -> s1 .<= s2 + n) (_2 g)
+  useG _ = ArrF
+    (\a -> let u = _1 a
+               g = _2 a
+               f n = ite (n .>= (-u) .&& u .<= 0) 
+                         (SM.sJust $ tuple (_1 g, SM.sJust (n + u))) 
+                         SM.sNothing
+           in return $ SM.maybe (SM.sJust g) f (_2 g))
+    (\(IntUpd u,g) -> case capSub g of
+                        Just n | n >= (-u) && u <= 0 -> Just $ g { capSub = Just $ n + u }
+                        Just n -> Nothing
+                        Nothing -> Just g)
 
 lowerBound :: ALang t (Context IntG) (Either () Int)
 lowerBound =
@@ -89,35 +100,47 @@ data IntReq
            , irDiffSub :: Maybe Int
            }
 
+instance Avs IntReq where
+  type Rep IntReq = (Maybe Integer, Maybe Integer, Maybe Integer)
+  toRep (IntReq a b c) = fmap tuple $
+    (,,) <$> toRep a <*> toRep b <*> toRep c
+  repc (IntReq a b c) = repc (a,b,c)
+
+instance AData IntReq where
+  type Content IntReq = (Maybe Int, Maybe Int, Maybe Int)
+  conA = ArrF return (\(a,b,c) -> IntReq a b c)
+  deconA = ArrF return (\(IntReq a b c) -> (a,b,c))
+
 instance Request IntReq where
   type Gr IntReq = IntG
-  type Upd IntReq = IntUpd
   seqR = undefined
+  seqCR = undefined
   minReq = undefined
   emptyReq = IntReq { irAtLeast = Nothing
                     , irAbsSub = Just 0
                     , irDiffSub = Nothing
                     }
-  reqPred (IntReq al as ds) = andAllA [b1,b2]
-    where b1 = case al of
-                 Just s -> lowerBound
-                           >>> onLeft (constA False)
-                           >>> onRight ((constA s &&& idA) >>> leA)
-                           >>> selectA
-                 Nothing -> constA True
-          b2 = case as of
-                 Just n -> getGrant >>> deconA >>> tup2g2 >>> m2eA
-                           >>> onLeft (constA False)
-                           >>> onRight ((constA n &&& idA) >>> geA)
-                           >>> selectA
-                 Nothing -> constA True
+  reqPred = undefined
+  -- reqPred (IntReq al as ds) = andAllA [b1,b2]
+  --   where b1 = case al of
+  --                Just s -> lowerBound
+  --                          >>> onLeft (constA False)
+  --                          >>> onRight ((constA s &&& idA) >>> leA)
+  --                          >>> selectA
+  --                Nothing -> constA True
+  --         b2 = case as of
+  --                Just n -> getGrant >>> deconA >>> tup2g2 >>> m2eA
+  --                          >>> onLeft (constA False)
+  --                          >>> onRight ((constA n &&& idA) >>> geA)
+  --                          >>> selectA
+  --                Nothing -> constA True
 
-atLeastR :: ReqMake Int IntReq
-atLeastR = ReqMake
-  (\i -> IntReq (Just i) Nothing Nothing)
-  (sndA (getGrant >>> deconA >>> tup2g1 >>> m2eA)
-   >>> distA
-   >>> (constA False ||| leA))
+-- atLeastR :: ReqMake Int IntReq
+-- atLeastR = ReqMake
+--   (\i -> IntReq (Just i) Nothing Nothing)
+--   (sndA (getGrant >>> deconA >>> tup2g1 >>> m2eA)
+--    >>> distA
+--    >>> (constA False ||| leA))
 
 addU :: ALang t Int IntUpd
 addU = conA

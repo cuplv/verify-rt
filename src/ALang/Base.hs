@@ -68,6 +68,9 @@ constA b = ArrF (const $ toRep b) (const b)
 forget :: (Avs a) => ALang t a ()
 forget = constA ()
 
+passThru :: (Avs a, Avs b) => ALang t a b -> ALang t a a
+passThru f = (idA &&& f) >>> tup2g1
+
 -- Bools
 
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
@@ -80,6 +83,11 @@ andA :: ALang t (Bool,Bool) Bool
 andA = ArrF
   (\a -> return $ _1 a .&& _2 a)
   (\(a,b) -> a && b)
+
+eqA :: (Avs a, Eq a) => ALang t (a,a) Bool
+eqA = ArrP
+  (\a b -> return $ b .== (_1 a .== _2 a))
+  (\(a,b) -> a == b)
 
 iteA :: (Avs a, Avs b) => ALang t a b -> ALang t a b -> ALang t (Bool,a) b
 iteA = AIte

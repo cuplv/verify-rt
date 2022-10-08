@@ -18,10 +18,13 @@ class (Avs u, Avs (UState u)) => Update u where
   applyU :: u -> Fun (u, UState u) (UState u)
   symU :: u -> Sy u -> Sy (UState u) -> Sy (UState u) -> Symbolic SBool
 
-class (Avs g, Avs (GState g)) => Grant g where
-  type GState g
+class (Avs g, Avs (GState g), Update (GUpd g)) => Grant g where
+  type GUpd g
   readG :: g -> Sy g -> Sy (GState g) -> Sy (GState g) -> Symbolic SBool
   writeG :: g -> Sy g -> Sy (GState g) -> Sy (GState g) -> Symbolic SBool
+  useG :: g -> Fun (GUpd g, g) (Maybe g)
+
+type GState g = UState (GUpd g)
 
 data Context g
   = Context { ctxState :: GState g

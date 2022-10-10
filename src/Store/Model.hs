@@ -16,7 +16,7 @@ class (Avs u, Avs (UState u)) => Update u where
   idU :: u
   seqU :: u -> Fun (u,u) u
   applyU :: u -> Fun (u, UState u) (UState u)
-  symU :: u -> Sy u -> Sy (UState u) -> Sy (UState u) -> Symbolic SBool
+  symU :: u -> Sy u -> Sy (UState u) -> Symbolic (Sy (UState u))
 
 class (Avs g, Avs (GState g), Update (GUpd g)) => Grant g where
   type GUpd g

@@ -29,13 +29,13 @@ instance Update IntUpd where
   type UState IntUpd = Int
   idU = IntUpd 0
   seqU _ =
-    ATimes deconA deconA
+    (deconA *** deconA)
     >>> sumA
     >>> conA
   applyU _ =
     fstA deconA
     >>> sumA
-  symU _ u s1 s2 = return $ s1 + u .== s2
+  symU _ u s1 = return $ s1 + u
 
 intWitness :: (IntG, IntUpd)
 intWitness = (undefined, undefined)
@@ -76,23 +76,33 @@ instance Grant IntG where
                         Just n -> Nothing
                         Nothing -> Just g)
 
-lowerBound :: ALang t (Context IntG) (Either () Int)
-lowerBound =
-  (getState &&& (getGrant >>> deconA >>> tup2g1 >>> m2eA))
-  >>> distA
-  >>> (constA () +++ diffA)
+lowerBoundA :: ALang t (Context IntG) (Maybe Int)
+lowerBoundA =
+  (getState &&& (getGrant >>> deconA >>> tup2g1))
+  >>> maybeElim
+    (diffA >>> asJust)
+    (constA Nothing)
 
-atLeast :: ALang t (Int, Context IntG) Bool
-atLeast =
-  sndA lowerBound
-  >>> distA
-  >>> (constA False ||| leA)
+lowerBound :: (Avs a) => ALang t a (Context IntG) -> ALang t a (Maybe Int)
+lowerBound = (>>> lowerBoundA)
 
-canSub :: ALang t (Int, Context IntG) Bool
-canSub =
-  sndA (getGrant >>> deconA >>> tup2g2 >>> m2eA)
-  >>> distA
-  >>> (constA True ||| leA)
+atLeastA :: ALang t (Context IntG, Int) Bool
+atLeastA =
+  fstA lowerBoundA
+  >>> flipA
+  >>> maybeElim leA (constA False)
+
+atLeast :: (Avs a) => ALang t a (Context IntG) -> ALang t a Int -> ALang t a Bool
+atLeast m1 m2 = (m1 &&& m2) >>> atLeastA
+
+canSubA :: ALang t (Context IntG, Int) Bool
+canSubA =
+  fstA (getGrant >>> deconA >>> tup2g2)
+  >>> flipA
+  >>> maybeElim leA (constA True)
+
+canSub :: (Avs a) => ALang t a (Context IntG) -> ALang t a Int -> ALang t a Bool
+canSub m1 m2 = (m1 &&& m2) >>> canSubA
 
 data IntReq
   = IntReq { irAtLeast :: Maybe Int
@@ -142,8 +152,8 @@ instance Request IntReq where
 --    >>> distA
 --    >>> (constA False ||| leA))
 
-addU :: ALang t Int IntUpd
-addU = conA
+addU :: (Avs a) => ALang t a Int -> ALang t a IntUpd
+addU m = m >>> conA
 
-subU :: ALang t Int IntUpd
-subU = negateA >>> conA
+subU :: (Avs a) => ALang t a Int -> ALang t a IntUpd
+subU m = m >>> negateA >>> conA

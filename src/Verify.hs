@@ -8,7 +8,8 @@ import Data.SBV
 import qualified Data.SBV.Maybe as SM
 import Data.SBV.Tuple
 
-type TransactS g = Sy (Context g) -> Binr (Sy (GState g))
+type TransactS g
+  = Sy (Context g) -> Sy (GState g) -> Symbolic (Sy (GState g))
 
 type Spec g = Binr (Sy (GState g))
 
@@ -24,10 +25,9 @@ gPrePost z t p = do
   constrain =<< p (stateS ctx) pre
   constrain =<< readCtx z ctx pre
 
-  post <- forall "post"
-  constrain =<< t ctx pre post
+  post <- t ctx pre
 
-  return (grantS ctx, pre, post)
+  return (grantS ctx,pre,post)
 
 tsSpec
   :: (Grant g)

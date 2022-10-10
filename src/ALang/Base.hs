@@ -68,6 +68,9 @@ funA  = ArrF (const forall_)
 constA :: (Avs a, Avs b) => b -> ALang t a b
 constA b = ArrF (const $ toRep b) (const b)
 
+ca :: (Avs a, Avs b) => b -> ALang t a b
+ca = constA
+
 forget :: (Avs a) => ALang t a ()
 forget = constA ()
 
@@ -85,10 +88,16 @@ andA = ArrF
   (\a -> return $ _1 a .&& _2 a)
   (\(a,b) -> a && b)
 
+($/\) :: (Avs a) => ALang t a Bool -> ALang t a Bool -> ALang t a Bool
+($/\) m1 m2 = (m1 &&& m2) >>> andA
+
 eqA :: (Avs a, Eq a) => ALang t (a,a) Bool
 eqA = ArrF
   (\a -> return $ _1 a .== _2 a)
   (\(a,b) -> a == b)
+
+($==) :: (Avs a, Avs b, Eq b) => ALang t a b -> ALang t a b -> ALang t a Bool
+($==) m1 m2 = (m1 &&& m2) >>> eqA
 
 iteA :: (Avs a, Avs b) => ALang t a b -> ALang t a b -> ALang t (a,Bool) b
 iteA mt mf = ABool mt mf >>> tup2g1
@@ -99,6 +108,14 @@ iteA'
   -> ALang t a b
   -> ALang t (a,Bool) (b,Bool)
 iteA' = ABool
+
+iteS
+  :: (Avs a, Avs b)
+  => ALang t a Bool
+  -> ALang t a b
+  -> ALang t a b
+  -> ALang t a b
+iteS p mt mf = (idA &&& p) >>> iteA mt mf
 
 assertA
   :: (Avs a, Avs b)
@@ -278,12 +295,11 @@ e2bA = (constA False ||| constA True)
 asJust :: (Avs a) => ALang t a (Maybe a)
 asJust = ArrF (\a -> return $ SM.sJust a) Just
 
+justE :: (Avs a, Avs b) => ALang t a b -> ALang t a (Maybe b)
+justE m = m >>> asJust
+
 fromJust :: (Avs a) => ALang t (a,Maybe a) a
-fromJust = ArrF
-  (\a -> return $ SM.maybe (_1 a) id (_2 a))
-  (\(an,m) -> case m of
-                Just aj -> aj
-                Nothing -> an)
+fromJust = maybeA (tup2g2 >>> tup2c2 ()) idA >>> tup2g1
 
 m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
 m2eA = ArrF 
@@ -306,6 +322,15 @@ maybeA
   -> ALang t (a, Maybe b) (c, Maybe d)
 maybeA = AMaybe
 
+maybeElim
+  :: (Avs a, Avs b, Avs c)
+  => ALang t (a,b) c -- Just case
+  -> ALang t a c -- Nothing case
+  -> ALang t (a, Maybe b) c
+maybeElim mj mn =
+  maybeA (mj >>> tup2c2 ()) mn
+  >>> tup2g1
+
 onJust :: (Avs a, Avs b) => ALang t a b -> ALang t (Maybe a) (Maybe b)
 onJust f = tup2c1 () >>> maybeA (idA *** f) idA >>> tup2g2
 
@@ -320,6 +345,12 @@ diffA = over2 negateA >>> sumA
 plusA :: Int -> ALang t Int Int
 plusA n = idA &&& constA n >>> sumA
 
+($+) :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Int
+($+) m1 m2 = (m1 &&& m2) >>> sumA
+
+($-) :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Int
+($-) m1 m2 = (m1 &&& m2) >>> diffA
+
 minusA :: Int -> ALang t Int Int
 minusA n = idA &&& constA n >>> diffA
 
@@ -329,8 +360,20 @@ negateA = ArrF (\a -> return (-a)) (\a -> (-a))
 leA :: ALang t (Int,Int) Bool
 leA = ArrF (\a -> return $ _1 a .<= _2 a) (\(a,b) -> a <= b)
 
+leE :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Bool
+leE m1 m2 = (m1 &&& m2) >>> leA
+
+($<=) :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Bool
+($<=) = leE
+
 geA :: ALang t (Int,Int) Bool
 geA = ArrF (\a -> return $ _1 a .>= _2 a) (\(a,b) -> a >= b)
+
+geE :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Bool
+geE m1 m2 = (m1 &&& m2) >>> geA
+
+($>=) :: (Avs a) => ALang t a Int -> ALang t a Int -> ALang t a Bool
+($>=) = geE
 
 -- Datatype construction
 

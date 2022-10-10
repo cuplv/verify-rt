@@ -35,6 +35,7 @@ data ALang t a b where
   ArrF :: (Avs a, Avs b) => FSpec a b -> (a -> b) -> ALang t a b
   ArrP :: (Avs a, Avs b) => PSpec a b -> (a -> b) -> ALang t a b
   FxTerm :: (Avs a, Avs b) => t a b -> ALang t a b
+
 data NoFx a b
 
 noFx :: Fun a b -> ALang t a b

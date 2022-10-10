@@ -130,48 +130,48 @@ splitP s (a,c) = do
   b <- forall s
   return ((a,b), (b,c))
 
-symAtl
-  :: (Request r, Avs w, Avs a, Avs b)
-  => (r, Gr r, Upd r) -- witness values for Request, Grant, and Effect types
-  -> Atl r w a b
-  -> Sy w
-  -> (Sy a, Sy b)
-  -> (Sy (Ctx r), Sy (Ctx r))
-  -> (Sy (State r), Sy (State r))
-  -> Symbolic SBool
-symAtl (zr,zg,zu) m w val ctx state = case m of
-  PipeRL ml mr -> do
-    (val1,val2) <- splitP "valStep" val
-    (ctx1,ctx2) <- splitP "ctxStep" ctx
-    (state1,state2) <- splitP "stateStep" state
-    constrain =<< symAtl (zr,zg,zu) mr w val1 ctx1 state1
-    symAtl (zr,zg,zu) ml w val2 ctx2 state2
-  ArrF sf ff -> pureF $ ArrF sf ff
-  ArrP sp ff -> pureF $ ArrP sp ff
+-- symAtl
+--   :: (Request r, Avs w, Avs a, Avs b)
+--   => (r, Gr r, Upd r) -- witness values for Request, Grant, and Effect types
+--   -> Atl r w a b
+--   -> Sy w
+--   -> (Sy a, Sy b)
+--   -> (Sy (Ctx r), Sy (Ctx r))
+--   -> (Sy (State r), Sy (State r))
+--   -> Symbolic SBool
+-- symAtl (zr,zg,zu) m w val ctx state = case m of
+--   ASequenceLR ml mr -> do
+--     (val1,val2) <- splitP "valStep" val
+--     (ctx1,ctx2) <- splitP "ctxStep" ctx
+--     (state1,state2) <- splitP "stateStep" state
+--     constrain =<< symAtl (zr,zg,zu) ml w val1 ctx1 state1
+--     symAtl (zr,zg,zu) mr w val2 ctx2 state2
+--   ArrF sf ff -> pureF $ ArrF sf ff
+--   ArrP sp ff -> pureF $ ArrP sp ff
 
-  FxTerm fx -> case fx of
-    SlConfig -> return (eFree .&& snd val .== w)
-    SlReConfig f m1 -> do
-      w1 <- forall "reconfig"
-      constrain =<< symbolize f w w1
-      symAtl (zr,zg,zu) m1 w1 val ctx state
-    SlContext -> return (eFree .&& snd val .== snd ctx)
-    SlRequest -> do
-      -- The request witness (zr) is used here
-      p1 <- reqAddCap zr w (grantS (fst ctx)) (grantS (snd ctx))
-      p2 <- reqEnv zr w (fst ctx)
-      return (p1 .&& p2 .&& fst val .== snd val .&& fst state .== snd state)
-    SlUpdate -> do
-      p1 <- symU zu (fst val) (stateS (fst ctx)) (stateS (snd ctx))
-      p2 <- symU zu (fst val) (fst state) (snd state)
-      p3 <- symbolize 
-              (useG zg) 
-              (tuple (fst val, grantS (fst ctx))) 
-              (sJust $ grantS (snd ctx))
-      return (p1 .&& p2 .&& p3)
-    SlCancel -> return sFalse
+--   FxTerm fx -> case fx of
+--     SlConfig -> return (eFree .&& snd val .== w)
+--     SlReConfig f m1 -> do
+--       w1 <- forall "reconfig"
+--       constrain =<< symbolize f w w1
+--       symAtl (zr,zg,zu) m1 w1 val ctx state
+--     SlContext -> return (eFree .&& snd val .== snd ctx)
+--     SlRequest -> do
+--       -- The request witness (zr) is used here
+--       p1 <- reqAddCap zr w (grantS (fst ctx)) (grantS (snd ctx))
+--       p2 <- reqEnv zr w (fst ctx)
+--       return (p1 .&& p2 .&& fst val .== snd val .&& fst state .== snd state)
+--     SlUpdate -> do
+--       p1 <- symU zu (fst val) (stateS (fst ctx)) (stateS (snd ctx))
+--       p2 <- symU zu (fst val) (fst state) (snd state)
+--       p3 <- symbolize 
+--               (useG zg) 
+--               (tuple (fst val, grantS (fst ctx))) 
+--               (sJust $ grantS (snd ctx))
+--       return (p1 .&& p2 .&& p3)
+--     SlCancel -> return sFalse
 
-  where eFree =
-          fst state .== snd state
-          .&& fst ctx .== snd ctx
-        pureF f = (eFree .&&) <$> symbolize f (fst val) (snd val)
+--   where eFree =
+--           fst state .== snd state
+--           .&& fst ctx .== snd ctx
+--         pureF f = (eFree .&&) <$> symbolize f (fst val) (snd val)

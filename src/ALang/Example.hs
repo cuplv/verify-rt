@@ -27,20 +27,22 @@ import Verify
 --   >>> getConf
 
 takeStockTest :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStockTest = assertA ((tup2g2 &&& constA 0) >>> geA) $
-  flipA
-  >>> (reqs &&& tup2g1)
-  >>> iteA ((subU &&& idA) >>> asJust)
-           (constA Nothing)
-  where reqs = (atLeast &&& canSub) >>> andA
+takeStockTest =
+  assertA (amt $>= ca 0) $
+  assertA (ctx `atLeast` amt) $
+  assertA (ctx `canSub` amt) $
+  justE (subU amt &&& amt)
+  where ctx = tup2g1
+        amt = tup2g2
 
 takeStockUnsafe :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStockUnsafe = assertA ((tup2g2 &&& constA 0) >>> geA) $
-  flipA
-  >>> (reqs &&& tup2g1)
-  >>> iteA (((plusA 1 >>> subU) &&& idA) >>> asJust)
-           (constA Nothing)
-  where reqs = (atLeast &&& canSub) >>> andA
+takeStockUnsafe =
+  assertA (amt $>= ca 0) $
+  assertA (ctx `atLeast` amt) $
+  assertA (ctx `canSub` amt) $
+  justE (subU (amt $+ ca 1) &&& amt)
+  where ctx = tup2g1
+        amt = tup2g2
 
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
 nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
@@ -73,9 +75,6 @@ test2 :: IO ()
 test2 = do
   r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
     a <- forall "a"
-    b <- forall "b"
-    constrain =<< symbolize (idA :: Fun Int Int) a b
-    -- return $ (a .>= 0) .=> (b .== 3)
-    return $ a .== 2
-    -- symbolize (plusA 1 >>> plusA 1) a (a + 2)
+    b <- symbolize (plusA 1 >>> plusA 1) a
+    return $ b .== a + 2
   print r

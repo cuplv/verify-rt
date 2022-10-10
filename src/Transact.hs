@@ -19,12 +19,11 @@ transactS
   -> Transact g w u b
   -> Sy w
   -> TransactS g
-transactS z f w ctx pre post = do
-  mu <- forall "result"
-  constrain =<< symbolize f (tuple (ctx, w)) mu
+transactS z f w ctx pre = do
+  mu <- symbolize f (tuple (ctx, w))
+  constrain $ SM.isJust mu
   let u = _1 (SM.fromJust mu)
-  r2 <- symU z u pre post
-  return $ SM.maybe sFalse (const r2) mu
+  symU z u pre
 
 check
   :: (GState g ~ UState u, Grant g, Update u, Avs w, Avs b)

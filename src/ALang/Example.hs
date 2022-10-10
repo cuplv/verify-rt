@@ -68,3 +68,14 @@ test = do
   if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4)
      then putStrLn "[OK]"
      else putStrLn "[ERROR]"
+
+test2 :: IO ()
+test2 = do
+  r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
+    a <- forall "a"
+    b <- forall "b"
+    constrain =<< symbolize (idA :: Fun Int Int) a b
+    -- return $ (a .>= 0) .=> (b .== 3)
+    return $ a .== 2
+    -- symbolize (plusA 1 >>> plusA 1) a (a + 2)
+  print r

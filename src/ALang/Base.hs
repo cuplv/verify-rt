@@ -18,10 +18,10 @@ import Data.SBV.Tuple
 -- Operators
 
 (<<<) :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t a b -> ALang t a c
-(<<<) = PipeRL
+(<<<) = flip ASequenceLR
 
 (>>>) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t b c -> ALang t a c
-(>>>) = flip PipeRL
+(>>>) = ASequenceLR
 
 (>>|) :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t () c -> ALang t a c
 (>>|) t1 t2 = t1 >>> forget >>> t2
@@ -31,28 +31,31 @@ import Data.SBV.Tuple
   => ALang t a1 b1
   -> ALang t a2 b2
   -> ALang t (a1,a2) (b1,b2)
-(***) = ATimes
+(***) = ATuple2
 
 (&&&)
   :: (Avs a, Avs b1, Avs b2)
   => ALang t a b1
   -> ALang t a b2
   -> ALang t a (b1,b2)
-(&&&) a1 a2 = forkA >>> ATimes a1 a2
+(&&&) a1 a2 = forkA >>> ATuple2 a1 a2
 
 (+++)
   :: (Avs a, Avs b, Avs c, Avs d)
   => ALang t a b
   -> ALang t c d
   -> ALang t (Either a c) (Either b d)
-(+++) = ASum
+(+++) ml mr =
+  tup2c1 ()
+  >>> AEither (idA *** ml) (idA *** mr)
+  >>> tup2g2
 
 (|||)
   :: (Avs a, Avs b, Avs c)
   => ALang t a c
   -> ALang t b c
   -> ALang t (Either a b) c
-(|||) ml mr = ASum ml mr >>> selectA
+(|||) ml mr = (ml +++ mr) >>> selectA
 
 -- Fundamental
 
@@ -74,10 +77,8 @@ passThru f = (idA &&& f) >>> tup2g1
 -- Bools
 
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
-andAllA ts = ArrP
-  (\a b -> do bs <- mapM (\t -> symbolize t a sTrue) ts
-              return $ foldr (.&&) sTrue bs .== b)
-  (\a -> and (map (\t -> runFun t a) ts))
+andAllA [] = constA True
+andAllA (m:ms) = (idA &&& noFx m) >>> iteA (andAllA ms) (constA False)
 
 andA :: ALang t (Bool,Bool) Bool
 andA = ArrF
@@ -85,19 +86,26 @@ andA = ArrF
   (\(a,b) -> a && b)
 
 eqA :: (Avs a, Eq a) => ALang t (a,a) Bool
-eqA = ArrP
-  (\a b -> return $ b .== (_1 a .== _2 a))
+eqA = ArrF
+  (\a -> return $ _1 a .== _2 a)
   (\(a,b) -> a == b)
 
-iteA :: (Avs a, Avs b) => ALang t a b -> ALang t a b -> ALang t (Bool,a) b
-iteA = AIte
+iteA :: (Avs a, Avs b) => ALang t a b -> ALang t a b -> ALang t (a,Bool) b
+iteA mt mf = ABool mt mf >>> tup2g1
+
+iteA'
+  :: (Avs a, Avs b)
+  => ALang t a b
+  -> ALang t a b
+  -> ALang t (a,Bool) (b,Bool)
+iteA' = ABool
 
 assertA
   :: (Avs a, Avs b)
   => ALang t a Bool
   -> ALang t a (Maybe b)
   -> ALang t a (Maybe b)
-assertA p t = (p &&& idA) >>> iteA t (constA Nothing)
+assertA p t = (idA &&& p) >>> iteA t (constA Nothing)
 
 -- Tuples
 
@@ -144,7 +152,7 @@ instance (Avs a, Avs b, Avs c) => Set2 (a,b) (a,c) c where
 over1
   :: (Avs x, Avs y, Avs a, Avs b, Get1 x a, Set1 x y b)
   => ALang t a b -> ALang t x y
-over1 f = forkA >>> ATimes (get1 >>> f) idA >>> set1
+over1 f = forkA >>> ATuple2 (get1 >>> f) idA >>> set1
 
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
 tup2g1 = ArrF (return . _1) fst
@@ -158,7 +166,7 @@ fstA = over1
 over2
   :: (Avs x, Avs y, Avs a, Avs b, Get2 x a, Set2 x y b)
   => ALang t a b -> ALang t x y
-over2 f = forkA >>> ATimes (get2 >>> f) idA >>> set2
+over2 f = forkA >>> ATuple2 (get2 >>> f) idA >>> set2
 
 sndA :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (a,b) (a,c)
 sndA = over2
@@ -171,6 +179,12 @@ tup3g2 = tup3t2 >>> tup2g1 >>> tup2g2
 
 tup3g3 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) c
 tup3g3 = tup3t2 >>> tup2g2
+
+tup2c1 :: (Avs a, Avs b) => a -> ALang t b (a,b)
+tup2c1 a = constA a &&& idA
+
+tup2c2 :: (Avs a, Avs b) => b -> ALang t a (a,b)
+tup2c2 a = idA &&& constA a
 
 -- Either
 
@@ -217,10 +231,10 @@ asRight :: (Avs a, Avs b) => ALang t b (Either a b)
 asRight = ArrF (\a -> return $ sRight a) Right
 
 onLeft :: (Avs a, Avs b, Avs c) => ALang t a b -> ALang t (Either a c) (Either b c)
-onLeft f = ASum f idA
+onLeft f = f +++ idA
 
 onRight :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t (Either a b) (Either a c)
-onRight f = ASum idA f
+onRight f = idA +++ f
 
 -- bindA
 --   :: (Avs a, Avs b, Avs e)
@@ -250,7 +264,7 @@ distA = ArrF f1 f2
         f2 (a, Right c) = Right (a,c)
 
 undistA :: (Avs a, Avs b, Avs c) => ALang t (Either (a,b) (a,c)) (a, Either b c)
-undistA = (ASum get1 get1 >>> selectA) &&& ASum get2 get2
+undistA = (tup2g1 ||| tup2g1) &&& (tup2g2 +++ tup2g2)
 
 b2eA :: ALang t Bool (Either () ())
 b2eA = ArrF (\a -> return (ite a (sRight su) (sLeft su)))
@@ -259,28 +273,41 @@ b2eA = ArrF (\a -> return (ite a (sRight su) (sLeft su)))
                      else Left ())
 
 e2bA :: (Avs a, Avs b) => ALang t (Either a b) Bool
-e2bA = ASum (constA False) (constA True) >>> selectA
+e2bA = (constA False ||| constA True)
 
 asJust :: (Avs a) => ALang t a (Maybe a)
 asJust = ArrF (\a -> return $ SM.sJust a) Just
 
-fromJust :: (Avs a) => a -> ALang t (Maybe a) a
-fromJust a = m2eA >>> ASum (constA a) idA >>> selectA
+fromJust :: (Avs a) => ALang t (a,Maybe a) a
+fromJust = ArrF
+  (\a -> return $ SM.maybe (_1 a) id (_2 a))
+  (\(an,m) -> case m of
+                Just aj -> aj
+                Nothing -> an)
 
 m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
-m2eA = ArrF (return . SM.maybe (literal (Left ())) sRight)
-           (\m -> case m of
-                    Just a -> Right a
-                    Nothing -> Left ())
+m2eA = ArrF 
+  (return . SM.maybe (literal (Left ())) sRight)
+  (\m -> case m of
+           Just a -> Right a
+           Nothing -> Left ())
 
 e2mA :: (Avs a, Avs b) => ALang t (Either a b) (Maybe b)
-e2mA = ArrF (return . Data.SBV.Either.either (\_ -> literal Nothing) SM.sJust)
-           (\m -> case m of
-                    Left _ -> Nothing
-                    Right a -> Just a)
+e2mA = ArrF 
+  (return . Data.SBV.Either.either (\_ -> literal Nothing) SM.sJust)
+  (\m -> case m of
+           Left _ -> Nothing
+           Right a -> Just a)
+
+maybeA
+  :: (Avs a, Avs b, Avs c, Avs d)
+  => ALang t (a,b) (c,d) -- Just case
+  -> ALang t a c -- Nothing case
+  -> ALang t (a, Maybe b) (c, Maybe d)
+maybeA = AMaybe
 
 onJust :: (Avs a, Avs b) => ALang t a b -> ALang t (Maybe a) (Maybe b)
-onJust f = m2eA >>> ASum idA f >>> e2mA
+onJust f = tup2c1 () >>> maybeA (idA *** f) idA >>> tup2g2
 
 -- Ints
 

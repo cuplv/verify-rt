@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module ALang
-  ( ALang (ASum, ATimes, FxTerm)
+  ( ALang
   , NoFx
   , Fun
   , noFx

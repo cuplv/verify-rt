@@ -171,6 +171,12 @@ over1
   => ALang t a b -> ALang t x y
 over1 f = forkA >>> ATuple2 (get1 >>> f) idA >>> set1
 
+tup2
+  :: (Avs a, Avs b, Avs c)
+  => (ALang t (a,b) a -> ALang t (a,b) b -> ALang t (a,b) c)
+  -> ALang t (a,b) c
+tup2 f = f tup2g1 tup2g2
+
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
 tup2g1 = ArrF (return . _1) fst
 

@@ -27,22 +27,18 @@ import Verify
 --   >>> getConf
 
 takeStockTest :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStockTest =
+takeStockTest = tup2 $ \ctx amt ->
   assertA (amt $>= ca 0) $
   assertA (ctx `atLeast` amt) $
   assertA (ctx `canSub` amt) $
   justE (subU amt &&& amt)
-  where ctx = tup2g1
-        amt = tup2g2
 
 takeStockUnsafe :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStockUnsafe =
+takeStockUnsafe = tup2 $ \ctx amt ->
   assertA (amt $>= ca 0) $
   assertA (ctx `atLeast` amt) $
   assertA (ctx `canSub` amt) $
   justE (subU (amt $+ ca 1) &&& amt)
-  where ctx = tup2g1
-        amt = tup2g2
 
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
 nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)

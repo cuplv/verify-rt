@@ -57,8 +57,23 @@ addRecord = tup2 $ \ctx amt ->
       tup2' s $ \records amt ->
         -- Check that it has not been used
         assertA (notE $ memberE key records) $
-        --justE (insertE key (makeRecord amt) &&& ca ()))
-        justE (ca idU &&& ca ()))
+        justE (insertE key (makeRecord amt) &&& ca ()))
+    -- When no key is granted
+    (ca Nothing)
+
+  where makeRecord amt = funE amt $ \n ->
+          "Order for " ++ show n ++ " units."
+
+addRecordBad :: (Ord k, Avs k) => Fun (Context (MapG' k), (Int, k)) (Maybe (MapU' k, ()))
+addRecordBad = tup2 $ \ctx cfg ->
+  ((stateE ctx &&& cfg) &&& deconE (grantE ctx)) >>> maybeElim
+    -- When key is granted
+    (tup2 $ \s key ->
+      tup2' s $ \records cfg -> tup2' cfg $ \amt k ->
+        -- Check that it has not been used
+        assertA (notE $ memberE key records) $
+        -- Use a key unrelated to the granted key... unsafe!
+        justE (insertE (k >>> conA) (makeRecord amt) &&& ca ()))
     -- When no key is granted
     (ca Nothing)
 
@@ -81,7 +96,7 @@ test :: IO ()
 test = do
   (r1,r2) <- check intWitness (pure ()) takeStockTest nonN
   (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness SMap.axioms addRecord trueSpec
+  (r5,r6) <- check mapWitness SMap.axioms addRecordBad noLoss
   if not $ trueThm r1
      then putStrLn "Error: good failed spec" >> print r1
      else return ()
@@ -108,7 +123,8 @@ test = do
 test2 :: IO ()
 test2 = do
   r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
-    a <- forall "a"
+    SMap.axioms
+    a <- forall "pre"
     b <- symbolize (plusA 1 >>> plusA 1) a
     return $ b .== a + 2
   print r

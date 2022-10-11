@@ -24,6 +24,11 @@ instance Avs (KeyBox k) where
   toRep = const forall_
   repc _ _ = sTrue
 
+instance (Avs k) => AData (KeyBox k) where
+  type Content (KeyBox k) = k
+  conA = ArrF (\_ -> forall_) KeyBox
+  deconA = ArrF (\_ -> forall_) (\(KeyBox k) -> k)
+
 data RMap k v = RMap (Map k v) deriving (Show,Eq,Ord)
 
 instance Avs (RMap k v) where
@@ -41,12 +46,7 @@ data MapUpd k v u = MapUpd [(k, MapAction v u)] deriving (Show,Eq,Ord)
 
 instance Avs (MapUpd k v u) where
   type Rep (MapUpd k v u) = SMap.Upd
-  toRep (MapUpd []) = do    
-    m1 <- forall_
-    m2 <- forall_
-    u <- forall_
-    constrain $ SMap.updM u m1 m2 .=> m1 .== m2
-    return u
+  toRep (MapUpd []) = return SMap.idMapUM
   toRep _ = forall_
   -- If we construct a static update of our own design, rather than
   -- build it up using data from the transaction context, then we
@@ -61,25 +61,8 @@ insertE
 insertE m1 m2 = (m1 &&& m2) >>> insertU
 
 insertU :: (Avs v) => ALang t (KeyBox k,v) (MapUpd k v u)
-insertU = ArrP
-  -- (\a -> do
-  --    u <- forall_
-  --    m1 <- forall_
-  --    m2 <- forall_
-  --    constrain $ SMap.updM u m1 m2
-  --    k <- forall_
-  --    constrain $ (_1 a) ./= k)
-
-  (\a b -> do
-     m1 <- forall_
-     m2 <- forall_
-     constrain $ SMap.updM b m1 m2
-     k <- forall_
-     constrain $ (_1 a) ./= k
-     return $
-       (SMap.memberM (_1 a) m2
-            .&& SMap.matchesM k m1 m2))
-
+insertU = ArrF
+  (\a -> return $ SMap.insertUM (_1 a))
   (\(KeyBox k,v) -> MapUpd [(k, Insert v)])
 
 modifyU :: (Avs u) => ALang t (KeyBox k,u) (MapUpd k v u)
@@ -96,14 +79,8 @@ modifyU = ArrP
   (\(KeyBox k,u) -> MapUpd [(k, Modify u)])
 
 seqMapU :: ALang t (MapUpd k v u, MapUpd k v u) (MapUpd k v u)
-seqMapU = ArrP
-  (\a b -> do
-     m1 <- forall_
-     m2 <- forall_
-     m3 <- forall_
-     return $ 
-       (SMap.updM (_1 a) m1 m2 .&& SMap.updM (_2 a) m2 m3)
-       .=> SMap.updM b m1 m3)
+seqMapU = ArrF
+  (\a -> return $ SMap.seqUM (_1 a) (_2 a))
   (\(MapUpd u1, MapUpd u2) -> MapUpd (u1 ++ u2))
 
 idMapU :: MapUpd k v u

@@ -36,6 +36,18 @@ derivesM = uninterpret "derivesM"
 updM :: SUpd -> SMap -> SMap -> SBool
 updM = uninterpret "updM"
 
+idMapUM :: SUpd
+idMapUM = uninterpret "idMapUM"
+
+insertsM :: SKey -> SUpd -> SBool
+insertsM = uninterpret "insertsM"
+
+insertUM :: SKey -> SUpd
+insertUM = uninterpret "insertUM"
+
+seqUM :: SUpd -> SUpd -> SUpd
+seqUM = uninterpret "seqUM"
+
 mapAx =
   -- Matches with membership implies derives
   ["(assert (forall ((k Key) (m1 Map) (m2 Map))"
@@ -61,49 +73,31 @@ mapAx =
   -- Matches implies membership agreement
   ,"(assert (forall ((k Key) (m1 Map) (m2 Map))"
   ,"  (=> (matchesM k m1 m2) (=> (memberM k m1) (memberM k m2)))))"
+  -- Maps that match on all keys are equivalent
+  ,"(assert (forall ((m1 Map) (m2 Map)) (= (= m1 m2) (forall ((k Key)) (matchesM k m1 m2)))))"
   -- Updates are total functions
   ,"(assert (forall ((u Upd) (m1 Map) (m2 Map) (m3 Map))"
   ,"  (=> (and (updM u m1 m2) (updM u m1 m3)) (= m2 m3))))"
   ,"(assert (forall ((u Upd) (m1 Map))"
   ,"  (exists ((m2 Map)) (updM u m1 m2))))"
+  -- idMapUM
+  ,"(assert (forall ((k Key)) (not (insertsM k idMapUM))))"
+  -- insertsM
+  ,"(assert (forall ((k Key) (u Upd) (m1 Map) (m2 Map))"
+  ,"  (and (=> (and (updM u m1 m2) (not (insertsM k u))) (matchesM k m1 m2))"
+  ,"       (=> (and (updM u m1 m2) (insertsM k u)) (memberM k m2)))))"
+  -- insertUM
+  ,"(assert (forall ((k Key)) (insertsM k (insertUM k))))"
+  ,"(assert (forall ((k1 Key) (k2 Key)) (=> (distinct k1 k2) (not (insertsM k2 (insertUM k1))))))"
+  -- seqUM
+  ,"(assert (forall ((k Key) (u1 Upd) (u2 Upd)) (= (insertsM k (seqUM u1 u2)) (or (insertsM k u1) (insertsM k u2)))))"
+
+  -- There are at least two distinct keys? Technically not always true,
+  -- since our key domain could be Unit.  It also doesn't help with
+  -- any tests so far, so I'm leaving it out for now.
+
+  -- ,"(assert (exists ((k1 Key) (k2 Key)) (distinct k1 k2)))"
   ]
-
--- insertAx =
---   ["(assert (forall ((k Key) (m1 Map) (m2 Map))"
---   ,"  (=> (mapMod (insert k) m1 m2)"
---   ,"      (member k m2))))"
---   ,"(assert (forall ((k1 Key) (k2 Key) (m1 Map) (m2 Map))"
---   ,"  (=> (and (mapMod (insert k1) m1 m2) (distinct k1 k2) (member k2 m1))"
---   ,"      (matches k2 m1 m2))))"
---   ,"(assert (forall ((k1 Key) (k2 Key) (m1 Map) (m2 Map))"
---   ,"  (=> (and (mapMod (insert k1) m1 m2) (distinct k1 k2) (not (member k2 m1)))"
---   ,"      (not (member k2 m2)))))"
---   ]
-
--- modifyM :: SMapMod
--- modifyM = uninterpret "modifyM"
-
--- deleteM :: SMapMod
--- deleteM = uninterpret "deleteM"
-
--- retainM :: SMapMod
--- retainM = uninterpret "retainM"
-
--- seqMapMod :: SMapMod -> SMapMod -> SMapMod
--- seqMapMod x1 x2 = ite (x2 .== retainM) x1 x2
-
--- mapModAx =
---   ["(assert (forall ((x MapU))"
---   ,"  (or (= x insertM) (= x modifyM) (= x deleteM) (= x retainM))"]
-
--- mapMod :: SMapMod -> SMap -> SMap -> SBool
--- mapMod = uninterpret "mapMod"
-
-
--- ancestorAx =
---   ["(assert (forall ((k Key) (m1 Map)) (ancestor k m1 m1)))"
---   ,"(assert (forall ((k Key) (m1 Map) (m2 Map) (m3 Map)) (=> (and (ancestor k m1 m2) (ancestor k m2 m3)) (ancestor k m1 m3))))"
---   ]
 
 axioms :: Symbolic ()
 axioms = do
@@ -117,6 +111,7 @@ axioms = do
     .|| matchesM k1 m1 m2
     .|| derivesM k1 m1 m2
     .|| updM u1 m1 m2
+    .|| insertsM k1 (seqUM (seqUM u1 idMapUM) (insertUM k1))
 
 test :: IO ThmResult
 test = do
@@ -127,11 +122,3 @@ test = do
     m2 <- forall_
     constrain $ memberM k m1
     return $ (matchesM k m1 m2) .=> memberM k m2
-    -- k1 <- forall_
-    -- m1 <- forall_
-    -- m2 <- forall_
-    -- k2 <- forall_
-    -- constrain $ k1 ./= k2
-    -- constrain $ mapMod (insert k1) m1 m2
-    -- constrain $ sNot (member k2 m1)
-    -- return $ sNot (member k2 m2)

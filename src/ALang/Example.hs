@@ -52,34 +52,44 @@ newOrder = seqT -- sequence two transactions
 
 -- Take given amount from the stock field, return the amount subtracted.
 takeStock :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStock = tup2 $ \ctx amt ->
+takeStock =
+  -- Unpack our two inputs: the state+grant context, and the amount to
+  -- subtract from the stock.
+  tup2 $ \ctx amt ->
   -- Check that input 'amt' is a natural number
   assertA (amt $>= ca 0) $
   -- Check that store has at least 'amt'
   assertA (ctx `atLeast` amt) $
-  -- Checm that stor won't block us from subtracting 'amt'
+  -- Check that we have permission to subtract 'amt'
   assertA (ctx `canSub` amt) $
   -- Subtract 'amt', and also pass 'amt' on as the return value
-  justE (subU amt &&& amt)
+  returnE (subU amt &&& amt)
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
 addRecord :: (Ord k) => Fun (Context (MapG' k), Int) (Maybe (MapU' k, ()))
-addRecord = tup2 $ \ctx amt ->
-  ((stateE ctx &&& amt) &&& deconE (grantE ctx)) >>> maybeElim
-    -- When a key is granted
-    (tup2 $ \s key -> 
-      tup2' s $ \records amt ->
-        -- Check that it has not been used
-        assertA (notE $ memberE key records) $
-        -- Insert a record string (based on amt) into the map
-        justE (insertE key (makeRecord amt) &&& ca ()))
-    -- When no key is granted
-    (ca Nothing)
+addRecord =
+  -- Unpack our two inputs: the state+grant context, and the order
+  -- amount.
+  tup2 $ \ctx amt ->
+  -- Extract the key from the grant.  When the grant holds a key, it
+  -- means we have the exclusive permission to insert/modify/delete on
+  -- that key.  If the grant is empty, we stop here and cancel the
+  -- transaction.
+  requireE (deconE $ grantE ctx) $ \key ->
+  -- Check the that this key has not already been used in the state.
+  -- If it has, we stop here and cancel the transaction.
+  assertA (notE $ memberE key (stateE ctx)) $
+  -- Our update inserts a string, based on the order amount, into
+  -- the table using the provided key.
+  let upd = insertE key (makeRecord amt)
+  -- The output is a pair: our update, and the transaction's return
+  -- value.  This transaction only returns a () unit value.
+  in returnE (upd &&& unitE)
 
+  -- The record is simply a stringe message including the amount.
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."
-
 
 
 -- Unsafe versions that do not verify.

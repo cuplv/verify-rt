@@ -375,6 +375,21 @@ maybeElim mj mn =
   maybeA (mj >>> tup2c2 ()) mn
   >>> tup2g1
 
+maybePm
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a (Maybe b)
+  -> (ALang t a b -> ALang t a c) -- Just case
+  -> ALang t a c -- Nothing case
+  -> ALang t a c
+maybePm fm fj fn = (idA &&& fm) >>> maybeElim (ASimulate fj) fn
+
+bindJust
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a (Maybe b)
+  -> (ALang t a b -> ALang t a (Maybe c))
+  -> ALang t a (Maybe c)
+bindJust fm fj = maybePm fm fj (constA Nothing)
+
 onJust :: (Avs a, Avs b) => ALang t a b -> ALang t (Maybe a) (Maybe b)
 onJust f = tup2c1 () >>> maybeA (idA *** f) idA >>> tup2g2
 
@@ -457,3 +472,12 @@ class (AApplicative m) => AMonad m where
 (>>=>) :: (AMonad m, Avs a, Avs b, Avs c, Avs (m a), Avs (m b), Avs (m c))
        => ALang t a (m b) -> ALang t b (m c) -> ALang t a (m c)
 (>>=>) f g = f >>> bindA g
+
+returnE 
+  :: (Avs a, Avs b, Avs (m b), AApplicative m) 
+  => ALang t a b 
+  -> ALang t a (m b)
+returnE = (>>> pureA)
+
+unitE :: (Avs a) => ALang t a ()
+unitE = ca ()

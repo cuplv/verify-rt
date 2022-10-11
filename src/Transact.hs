@@ -65,3 +65,13 @@ check (gw,uw) ax f p = do
     let t = transactS uw f conf
     tsWrite gw t p
   return (r1,r2)
+
+cancelE :: (Avs a, Avs b) => ALang t a (Maybe b)
+cancelE = constA Nothing
+
+requireE
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a (Maybe b)
+  -> (ALang t a b -> ALang t a (Maybe c))
+  -> ALang t a (Maybe c)
+requireE = bindJust

@@ -35,6 +35,10 @@ data ALang t a b where
   ArrF :: (Avs a, Avs b) => FSpec a b -> (a -> b) -> ALang t a b
   ArrP :: (Avs a, Avs b) => PSpec a b -> (a -> b) -> ALang t a b
   FxTerm :: (Avs a, Avs b) => t a b -> ALang t a b
+  ASimulate
+    :: (Avs a, Avs b, Avs c)
+    => (ALang t a b -> ALang t a c)
+    -> ALang t (a,b) c
 
 data NoFx a b
 
@@ -73,6 +77,9 @@ runFun m = case m of
     in (a1,b)
   ArrF _ f -> f
   ArrP _ f -> f
+  ASimulate f -> \(a,b) ->
+    let m' = f (ArrF undefined (const b))
+    in runFun m' a
 
 symbolize :: (Avs a, Avs b) => Fun a b -> FSpec a b
 symbolize m a = case m of
@@ -106,3 +113,6 @@ symbolize m a = case m of
     b <- forall_
     constrain =<< p a b
     return b
+  ASimulate f ->
+    let m' = f (ArrF (const.return$ _2 a) undefined)
+    in symbolize m' (_1 a)

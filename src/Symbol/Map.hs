@@ -49,6 +49,9 @@ mapAx =
   -- Derives is transitive
   ,"(assert (forall ((k Key) (m1 Map) (m2 Map) (m3 Map))"
   ,"  (=> (and (derivesM k m1 m2) (derivesM k m2 m3)) (derivesM k m1 m3))))"
+  -- Matches is reflexive
+  ,"(assert (forall ((k Key) (m1 Map))"
+  ,"  (matchesM k m1 m1)))"
   -- Matches is symmetric
   ,"(assert (forall ((k Key) (m1 Map) (m2 Map))"
   ,"  (=> (matchesM k m1 m2) (matchesM k m2 m1))))"

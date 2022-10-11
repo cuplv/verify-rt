@@ -131,6 +131,8 @@ instance Request IntReq where
                     , irDiffSub = Nothing
                     }
   reqPred = undefined
+  reqAddCap = undefined
+  reqEnv = undefined
   -- reqPred (IntReq al as ds) = andAllA [b1,b2]
   --   where b1 = case al of
   --                Just s -> lowerBound

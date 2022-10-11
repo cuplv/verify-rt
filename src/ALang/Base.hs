@@ -63,7 +63,10 @@ idA :: (Avs a) => ALang t a a
 idA = ArrF return id
 
 funA :: (Avs a, Avs b) => (a -> b) -> ALang t a b
-funA  = ArrF (const forall_)
+funA = ArrF (const forall_)
+
+funE :: (Avs x, Avs a, Avs b) => ALang t x a -> (a -> b) -> ALang t x b
+funE m f = m >>> funA f
 
 constA :: (Avs a, Avs b) => b -> ALang t a b
 constA b = ArrF (const $ toRep b) (const b)
@@ -82,6 +85,11 @@ passThru f = (idA &&& f) >>> tup2g1
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
 andAllA [] = constA True
 andAllA (m:ms) = (idA &&& noFx m) >>> iteA (andAllA ms) (constA False)
+
+notE :: (Avs a) => ALang t a Bool -> ALang t a Bool
+notE m = m >>> ArrF
+  (pure . sNot)
+  not
 
 andA :: ALang t (Bool,Bool) Bool
 andA = ArrF
@@ -176,6 +184,13 @@ tup2
   => (ALang t (a,b) a -> ALang t (a,b) b -> ALang t (a,b) c)
   -> ALang t (a,b) c
 tup2 f = f tup2g1 tup2g2
+
+tup2'
+  :: (Avs a, Avs b, Avs c, Avs x)
+  => ALang t x (a,b)
+  -> (ALang t x a -> ALang t x b -> ALang t x c)
+  -> ALang t x c
+tup2' m f = f (m >>> tup2g1) (m >>> tup2g2)
 
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
 tup2g1 = ArrF (return . _1) fst
@@ -387,6 +402,12 @@ class (Avs d, (Avs (Content d))) => AData d where
   type Content d
   conA :: ALang t (Content d) d
   deconA :: ALang t d (Content d)
+
+conE :: (Avs a, AData d) => ALang t a (Content d) -> ALang t a d
+conE m = m >>> conA
+
+deconE :: (Avs a, AData d) => ALang t a d -> ALang t a (Content d)
+deconE m = m >>> deconA
 
 -- Monad stack
 

@@ -10,7 +10,9 @@ import Data.SBV
 import qualified Data.SBV.List as SList
 import Store.Model
 import Store.Model.Int
+import Store.Model.Map
 import Symbol
+import qualified Symbol.Map as SMap
 import Transact
 import Verify
 
@@ -43,13 +45,43 @@ takeStockUnsafe = tup2 $ \ctx amt ->
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
 nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
+type MapG' k = MapG1 k String (NoUpd String)
+
+type MapU' k = MapUpd k String (NoUpd String)
+
+addRecord :: (Ord k) => Fun (Context (MapG' k), Int) (Maybe (MapU' k, ()))
+addRecord = tup2 $ \ctx amt ->
+  ((stateE ctx &&& amt) &&& deconE (grantE ctx)) >>> maybeElim
+    -- When key is granted
+    (tup2 $ \s key -> 
+      tup2' s $ \records amt ->
+        -- Check that it has not been used
+        assertA (notE $ memberE key records) $
+        --justE (insertE key (makeRecord amt) &&& ca ()))
+        justE (ca idU &&& ca ()))
+    -- When no key is granted
+    (ca Nothing)
+
+  where makeRecord amt = funE amt $ \n ->
+          "Order for " ++ show n ++ " units."
+
+noLoss :: Sy (Map k v) -> Sy (Map k v) -> Symbolic SBool
+noLoss s1 s2 = do
+  k <- forall_
+  constrain $ SMap.memberM k s1
+  return (SMap.matchesM k s1 s2)
+
+trueSpec :: Sy (Map k v) -> Sy (Map k v) -> Symbolic SBool
+trueSpec _ _ = return sTrue
+
 trueThm :: ThmResult -> Bool
 trueThm = not . modelExists
 
 test :: IO ()
 test = do
-  (r1,r2) <- check intWitness takeStockTest nonN
-  (r3,r4) <- check intWitness takeStockUnsafe nonN
+  (r1,r2) <- check intWitness (pure ()) takeStockTest nonN
+  (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
+  (r5,r6) <- check mapWitness SMap.axioms addRecord trueSpec
   if not $ trueThm r1
      then putStrLn "Error: good failed spec" >> print r1
      else return ()
@@ -62,8 +94,14 @@ test = do
   if trueThm r4
      then putStrLn "Error: bad passed write" >> print r4
      else return ()
+  if not $ trueThm r5
+     then putStrLn "Error: good map failed spec" >> print r5
+     else return ()
+  if not $ trueThm r6
+     then putStrLn "Error: good map failed write" >> print r6
+     else return ()
 
-  if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4)
+  if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4) && trueThm r5 && trueThm r6
      then putStrLn "[OK]"
      else putStrLn "[ERROR]"
 

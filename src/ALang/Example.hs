@@ -28,8 +28,15 @@ import Verify
 --   -- Then, return the config value.
 --   >>> getConf
 
-takeStockTest :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
-takeStockTest = tup2 $ \ctx amt ->
+type TpccG k = (IntG,MapG' k)
+
+-- newOrder :: (Ord k) => Fun (Context (TpccG k)) (Maybe (GUpd (TpccG k), ()))
+-- newOrder =
+--   tup2 $ \ctx amt ->
+--   tup2' ctx $ \stockCtx  -> undefined
+
+takeStock :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
+takeStock = tup2 $ \ctx amt ->
   assertA (amt $>= ca 0) $
   assertA (ctx `atLeast` amt) $
   assertA (ctx `canSub` amt) $
@@ -94,7 +101,7 @@ trueThm = not . modelExists
 
 test :: IO ()
 test = do
-  (r1,r2) <- check intWitness (pure ()) takeStockTest nonN
+  (r1,r2) <- check intWitness (pure ()) takeStock nonN
   (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
   (r5,r6) <- check mapWitness SMap.axioms addRecordBad noLoss
   if not $ trueThm r1

@@ -80,6 +80,17 @@ forget = constA ()
 passThru :: (Avs a, Avs b) => ALang t a b -> ALang t a a
 passThru f = (idA &&& f) >>> tup2g1
 
+eform :: (Avs a, Avs b, Avs c) => ALang t b c -> ALang t a b -> ALang t a c
+eform = (<<<)
+
+eform2 
+  :: (Avs a, Avs b, Avs c, Avs d)
+  => ALang t (b,c) d
+  -> ALang t a b
+  -> ALang t a c
+  -> ALang t a d
+eform2 m a1 a2 = (a1 &&& a2) >>> m
+
 -- Bools
 
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool
@@ -191,6 +202,18 @@ tup2'
   -> (ALang t x a -> ALang t x b -> ALang t x c)
   -> ALang t x c
 tup2' m f = f (m >>> tup2g1) (m >>> tup2g2)
+
+tup22
+  :: (Avs a, Avs b, Avs c, Avs d, Avs e, Avs x)
+  => ALang t x ((a,b),(c,d))
+  -> (((ALang t x a, ALang t x b), (ALang t x c, ALang t x d)) 
+      -> ALang t x e)
+  -> ALang t x e
+tup22 m f =
+  tup2' m $ \t1 t2 ->
+  tup2' t1 $ \a b ->
+  tup2' t2 $ \c d ->
+  f ((a,b), (c,d))
 
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
 tup2g1 = ArrF (return . _1) fst

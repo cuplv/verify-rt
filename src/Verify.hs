@@ -13,6 +13,10 @@ type TransactS g
 
 type Spec g = Binr (Sy (GState g))
 
+tup2Spec :: (SymVal s1, SymVal s2) => (Binr (SBV s1), Binr (SBV s2)) -> Binr (SBV (s1,s2))
+tup2Spec (p1,p2) = \a b ->
+  (.&&) <$> p1 (_1 a) (_1 b) <*> p2 (_2 a) (_2 b)
+
 gPrePost
   :: (Grant g)
   => g

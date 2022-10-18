@@ -11,6 +11,7 @@ import Prelude hiding (insert,seq)
 
 import Data.SBV
 import Data.SBV.Control (registerUISMTFunction)
+import Data.SBV.Maybe
 import Data.SBV.Internals (SolverContext)
 
 data MaybeMap
@@ -21,15 +22,25 @@ data MaybeMapUpd
 
 mkUninterpretedSort ''MaybeMapUpd
 
+data MaybeMapVal
+
+mkUninterpretedSort ''MaybeMapVal
+
+data MaybeMapValUpd
+
+mkUninterpretedSort ''MaybeMapValUpd
+
 fname s = s ++ "XZMaybeMap"
 
 type M = SBV MaybeMap
 
 type K = SBV Integer
 
-type V = SBV Bool
+type V = SBV (Maybe MaybeMapVal)
 
 type U = SBV MaybeMapUpd
+
+type F = SBV MaybeMapValUpd
 
 empty :: M
 empty = uninterpret $ fname "empty"
@@ -43,6 +54,9 @@ hasVal = uninterpret $ fname "hasVal"
 match :: K -> M -> M -> SBool
 match = uninterpret $ fname "match"
 
+valUpdate :: F -> V -> V
+valUpdate = uninterpret $ fname "valUpdate"
+
 update :: U -> M -> M
 update = uninterpret $ fname "update"
 
@@ -51,6 +65,9 @@ identity = uninterpret $ fname "identity"
 
 insert :: K -> V -> U
 insert = uninterpret $ fname "insert"
+
+modify :: K -> F -> U
+modify = uninterpret $ fname "modify"
 
 delete :: K -> U
 delete = uninterpret $ fname "delete"
@@ -65,14 +82,18 @@ addAxioms' ss = do
   v <- forall_
   m <- forall_
   u <- forall_
+  f <- forall_
   constrain $
     member k m
     .|| hasVal k v m
     .|| match k m m
+    .|| valUpdate f v .== v
+    .|| modify k f .== identity
     .|| update u m .== m
     .|| insert k v .== delete k
     .|| seq identity identity .== identity
     .|| empty .== empty
+    .|| sJust u .== sJust identity
 
 test :: IO ThmResult
 test = do

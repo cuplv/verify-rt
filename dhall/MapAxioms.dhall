@@ -8,9 +8,11 @@ let empty = mkfun "empty"
 let member = mkfun "member"
 let hasVal = mkfun "hasVal"
 let match = mkfun "match"
+let valUpdate = mkfun "valUpdate"
 let update = mkfun "update"
 let identity = mkfun "identity"
 let insert = mkfun "insert"
+let modify = mkfun "modify"
 let delete = mkfun "delete"
 let seq = mkfun "seq"
 
@@ -22,6 +24,8 @@ let qm1 = "(m1 ${i.map})"
 let qm2 = "(m2 ${i.map})"
 let qu1 = "(u1 ${i.upd})"
 let qu2 = "(u2 ${i.upd})"
+let qf1 = "(f1 ${i.valUpd})"
+let qf2 = "(f2 ${i.valUpd})"
 
 let baseAxioms =
 
@@ -71,12 +75,26 @@ in ''
 ''
 )
 
+-- Define modify update
+++ (
+let m2 = "(${update} (${modify} k1 f1) m1)"
+let v2 = "(${valUpdate} f1 v1)"
+in ''
+(assert (forall (${qf1} ${qk1} ${qv1} ${qm1})
+  (and
+    (= (${hasVal} k1 v1 m1) (${hasVal} k1 ${v2} ${m2}))
+    (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
+''
+)
+
 -- Defint delete update
 ++ (
 let m2 = "(${update} (${delete} k1) m1)"
 in ''
 (assert (forall (${qk1} ${qm1})
-  (not (${member} k1 ${m2}))))
+  (and
+    (not (${member} k1 ${m2}))
+    (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
 ''
 )
 

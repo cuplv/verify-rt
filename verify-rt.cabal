@@ -18,6 +18,7 @@ library
                     , Store.Model
                     , Store.Model.Int
                     , Store.Model.Map
+                    , Store.Model.MaybeMap
                     , Symbol
                     , Symbol.Axioms
                     , Symbol.Map

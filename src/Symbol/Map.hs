@@ -13,6 +13,8 @@ import Data.SBV.Internals (SolverContext)
 import Data.SBV.Maybe
 import Data.SBV.Set
 
+data Thing a = Nil | Cons a (Thing a)
+
 data Map
 
 mkUninterpretedSort ''Map

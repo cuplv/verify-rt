@@ -2,7 +2,7 @@ let i =
   { map = "MaybeMap"
   , key = "Int"
   , val = "Bool"
-  , upd = "Bool"
+  , upd = "MaybeMapUpd"
   }
 
 in

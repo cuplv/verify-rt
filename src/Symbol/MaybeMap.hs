@@ -46,8 +46,8 @@ match = uninterpret $ fname "match"
 update :: U -> M -> M
 update = uninterpret $ fname "update"
 
-idU :: U
-idU = uninterpret $ fname "idU"
+identity :: U
+identity = uninterpret $ fname "identity"
 
 insert :: K -> V -> U
 insert = uninterpret $ fname "insert"
@@ -71,7 +71,7 @@ addAxioms' ss = do
     .|| match k m m
     .|| update u m .== m
     .|| insert k v .== delete k
-    .|| seq idU idU .== idU
+    .|| seq identity identity .== identity
     .|| empty .== empty
 
 test :: IO ThmResult

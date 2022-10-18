@@ -32,47 +32,43 @@ mkUninterpretedSort ''MaybeMapValUpd
 
 fname s = s ++ "XZMaybeMap"
 
-type M = SBV MaybeMap
+type M = MaybeMap
+type K = Integer
+type V = Maybe MaybeMapVal
+type U = MaybeMapUpd
+type F = MaybeMapValUpd
 
-type K = SBV Integer
-
-type V = SBV (Maybe MaybeMapVal)
-
-type U = SBV MaybeMapUpd
-
-type F = SBV MaybeMapValUpd
-
-empty :: M
+empty :: SBV M
 empty = uninterpret $ fname "empty"
 
-member :: K -> M -> SBool
+member :: SBV K -> SBV M -> SBool
 member = uninterpret $ fname "member"
 
-hasVal :: K -> V -> M -> SBool
+hasVal :: SBV K -> SBV V -> SBV M -> SBool
 hasVal = uninterpret $ fname "hasVal"
 
-match :: K -> M -> M -> SBool
+match :: SBV K -> SBV M -> SBV M -> SBool
 match = uninterpret $ fname "match"
 
-valUpdate :: F -> V -> V
+valUpdate :: SBV F -> SBV V -> SBV V
 valUpdate = uninterpret $ fname "valUpdate"
 
-update :: U -> M -> M
+update :: SBV U -> SBV M -> SBV M
 update = uninterpret $ fname "update"
 
-identity :: U
+identity :: SBV U
 identity = uninterpret $ fname "identity"
 
-insert :: K -> V -> U
+insert :: SBV K -> SBV V -> SBV U
 insert = uninterpret $ fname "insert"
 
-modify :: K -> F -> U
+modify :: SBV K -> SBV F -> SBV U
 modify = uninterpret $ fname "modify"
 
-delete :: K -> U
+delete :: SBV K -> SBV U
 delete = uninterpret $ fname "delete"
 
-seq :: U -> U -> U
+seq :: SBV U -> SBV U -> SBV U
 seq = uninterpret $ fname "seq"
 
 addAxioms' :: [String] -> Symbolic ()

@@ -10,6 +10,7 @@ import Prelude hiding (insert)
 import Data.SBV
 import Data.SBV.Control (registerUISMTFunction)
 import Data.SBV.Internals (SolverContext)
+import Data.SBV.Maybe
 import Data.SBV.Set
 
 data Map
@@ -47,6 +48,9 @@ insertUM = uninterpret "insertUM"
 
 seqUM :: SUpd -> SUpd -> SUpd
 seqUM = uninterpret "seqUM"
+
+zxcdM :: SUpd -> SBV () -> SBV (Maybe Integer) -> SBool
+zxcdM = uninterpret "zxcdM"
 
 mapAx =
   -- Matches with membership implies derives
@@ -112,6 +116,8 @@ axioms = do
     .|| derivesM k1 m1 m2
     .|| updM u1 m1 m2
     .|| insertsM k1 (seqUM (seqUM u1 idMapUM) (insertUM k1))
+    .|| zxcdM idMapUM (literal ()) (sJust 1) 
+    .&& sJust (literal ()) ./= sNothing
 
 test :: IO ThmResult
 test = do

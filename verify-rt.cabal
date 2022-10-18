@@ -19,7 +19,9 @@ library
                     , Store.Model.Int
                     , Store.Model.Map
                     , Symbol
+                    , Symbol.Axioms
                     , Symbol.Map
+                    , Symbol.MaybeMap
                     , Transact
                     , Verify
 
@@ -33,7 +35,9 @@ library
                     , containers
                     , mtl
                     , microlens-platform
-                    , lattices 
+                    , lattices
+                    , dhall
+                    , text
     hs-source-dirs:   src
     default-language: Haskell2010
 

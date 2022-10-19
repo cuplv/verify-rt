@@ -279,6 +279,32 @@ instance (Avs e) => AApplicative (Either e) where
 instance (Avs e) => AMonad (Either e) where
   bindA f = asLeft ||| f
 
+eitherA
+  :: (Avs a, Avs b, Avs la, Avs lb, Avs ra, Avs rb)
+  => ALang t (a,la) (b,lb) -- Left case
+  -> ALang t (a,ra) (b,rb) -- Right case
+  -> ALang t (a, Either la ra) (b, Either lb rb)
+eitherA = AEither
+
+eitherElim
+  :: (Avs a, Avs la, Avs ra, Avs b)
+  => ALang t (a,la) b -- Left case
+  -> ALang t (a,ra) b -- Right case
+  -> ALang t (a, Either la ra) b
+eitherElim ml mr =
+  eitherA (ml >>> tup2c2 ()) (mr >>> tup2c2 ())
+  >>> tup2g1
+
+eitherPm
+  :: (Avs a, Avs la, Avs ra, Avs b)
+  => ALang t a (Either la ra)
+  -> (ALang t a la -> ALang t a b) -- Left case
+  -> (ALang t a ra -> ALang t a b) -- Right case
+  -> ALang t a b
+eitherPm fe fl fr =
+  (idA &&& fe)
+  >>> eitherElim (ASimulate fl) (ASimulate fr)
+
 getLeft :: (Avs a, Avs b) => ALang t (Either a b, a) a
 getLeft = flipA >>> distA >>> (tup2g2 ||| tup2g1)
 

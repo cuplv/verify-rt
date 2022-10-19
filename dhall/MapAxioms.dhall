@@ -22,6 +22,7 @@ let qv1 = "(v1 ${i.val})"
 let qv2 = "(v2 ${i.val})"
 let qm1 = "(m1 ${i.map})"
 let qm2 = "(m2 ${i.map})"
+let qm3 = "(m3 ${i.map})"
 let qu1 = "(u1 ${i.upd})"
 let qu2 = "(u2 ${i.upd})"
 let qf1 = "(f1 ${i.valUpd})"
@@ -50,6 +51,26 @@ let baseAxioms =
      (forall (${qk1}) (${match} k1 m1 m2)))))
 ''
 
+-- Matching is reflexive (same as previous axiom?)
+++ ''
+(assert (forall (${qk1} ${qm1})
+  (${match} k1 m1 m1)))
+''
+
+-- Matching is symmetric
+++ ''
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (= (${match} k1 m1 m2) (${match} k1 m2 m1))))
+''
+
+-- Matching is transitive
+++ ''
+(assert (forall (${qk1} ${qm1} ${qm2} ${qm3})
+  (=>
+    (and (${match} k1 m1 m2) (${match} k1 m2 m3))
+    (${match} k1 m1 m3))))
+''
+
 -- hasVal implies member
 ++ ''
 (assert (forall (${qk1} ${qv1} ${qm1})
@@ -57,7 +78,12 @@ let baseAxioms =
 ''
 
 -- member implies exists hasVal
--- ??? Do we need this? Leaving it out for now.
+++ ''
+(assert (forall (${qk1} ${qm1})
+  (=>
+    (${member} k1 m1)
+    (exists (${qv1}) (${hasVal} k1 v1 m1)))))
+''
 
 -- Define identity update
 ++ ''
@@ -87,7 +113,7 @@ in ''
 ''
 )
 
--- Defint delete update
+-- Define delete update
 ++ (
 let m2 = "(${update} (${delete} k1) m1)"
 in ''
@@ -107,5 +133,12 @@ in ''
 (assert (forall (${qu1} ${qu2} ${qm1}) (= ${m3a} ${m3b})))
 ''
 )
+
+-- identity and seq
+++ ''
+(assert (forall (${qu1})
+  (and (= u1 (${seq} ${identity} u1))
+       (= u1 (${seq} u1 ${identity})))))
+''
 
 in { baseAxioms }

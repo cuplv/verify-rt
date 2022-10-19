@@ -5,16 +5,19 @@ module ALang.Example where
 
 import ALang
 import Atl
-import Data.Map (Map)
+-- import Data.Map (Map)
 import Data.SBV
 import qualified Data.SBV.List as SList
 import Store.Model
 import Store.Model.Int
-import Store.Model.Map
 import Symbol
-import qualified Symbol.Map as SMap
+import qualified Symbol.MaybeMap as SMap
+import Store.Model.MaybeMap (Map)
+import qualified Store.Model.MaybeMap as MMap
 import Transact
 import Verify
+
+mapWitness = MMap.witness
 
 -- Properties to verify.
 
@@ -29,17 +32,17 @@ nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 -- Spec for record table: no inserted record is ever deleted or
 -- modified.  For complete application, we will also want to allow
 -- certain modifications.
-noLoss :: Sy (Map k v) -> Sy (Map k v) -> Symbolic SBool
+noLoss :: Sy (Map a b) -> Sy (Map a b) -> Symbolic SBool
 noLoss s1 s2 = do
   -- forall k's that are present in the pre-state
   k <- forall_
-  constrain $ SMap.memberM k s1 
+  constrain $ SMap.member k s1
   -- they must match their value in the post-state
-  return (SMap.matchesM k s1 s2)
+  return (SMap.match k s1 s2)
 
 -- Transactions
 
-type TpccG k = (IntG,MapG' k)
+type TpccG k = (IntG,MapG')
 
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
@@ -67,7 +70,7 @@ takeStock =
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
-addRecord :: (Ord k) => Fun (Context (MapG' k), Int) (Maybe (MapU' k, ()))
+addRecord :: Fun (Context (MapG'), Int) (Maybe (MapU', ()))
 addRecord =
   -- Unpack our two inputs: the state+grant context, and the order
   -- amount.
@@ -79,10 +82,11 @@ addRecord =
   requireE (deconE $ grantE ctx) $ \key ->
   -- Check the that this key has not already been used in the state.
   -- If it has, we stop here and cancel the transaction.
-  assertA (notE $ memberE key (stateE ctx)) $
+  assertA (notE $ MMap.memberE key (stateE ctx)) $
   -- Our update inserts a string, based on the order amount, into
   -- the table using the provided key.
-  let upd = insertE key (makeRecord amt)
+  let v = conE (justE (makeRecord amt) &&& unitE)
+      upd = MMap.insertE key v
   -- The output is a pair: our update, and the transaction's return
   -- value.  This transaction only returns a () unit value.
   in returnE (upd &&& unitE)
@@ -105,22 +109,23 @@ takeStockUnsafe = tup2 $ \ctx amt ->
   assertA (ctx `canSub` amt) $
   justE (subU (amt $+ ca 1) &&& amt)
 
-type MapG' k = MapG1 k String (NoUpd String)
+type MapG' = MMap.G1 String ()
 
-type MapU' k = MapUpd k String (NoUpd String)
+type MapU' = MMap.Upd String ()
 
 -- Uses key given by user, with no guarantee that it has not been used
 -- in the map already.
-addRecordBad :: (Ord k, Avs k) => Fun (Context (MapG' k), (Int, k)) (Maybe (MapU' k, ()))
+addRecordBad :: Fun (Context (MapG'), (Int, MMap.Key)) (Maybe (MapU', ()))
 addRecordBad = tup2 $ \ctx cfg ->
   ((stateE ctx &&& cfg) &&& deconE (grantE ctx)) >>> maybeElim
     -- When key is granted
     (tup2 $ \s key ->
       tup2' s $ \records cfg -> tup2' cfg $ \amt k ->
         -- Check that it has not been used
-        assertA (notE $ memberE key records) $
+        assertA (notE $ MMap.memberE key records) $
         -- Use a key unrelated to the granted key... unsafe!
-        justE (insertE (k >>> conA) (makeRecord amt) &&& ca ()))
+        let v = conE (justE (makeRecord amt) &&& ca ())
+        in justE (MMap.insertE k v &&& ca ()))
     -- When no key is granted
     (ca Nothing)
 
@@ -140,10 +145,15 @@ tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 -- suite...
 test :: IO ()
 test = do
+  ss <- SMap.loadAxioms'
   (r1,r2) <- check intWitness (pure ()) takeStock nonN
   (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness SMap.axioms addRecord noLoss
-  (r7,r8) <- check (tup2dist (intWitness,mapWitness)) SMap.axioms newOrder tpccSpec
+  (r5,r6) <- check mapWitness (SMap.addAxioms' ss) addRecord noLoss
+  (r7,r8) <- check 
+               (tup2dist (intWitness,mapWitness)) 
+               (SMap.addAxioms' ss)
+               newOrder 
+               tpccSpec
   if not $ trueThm r1
      then putStrLn "Error: good failed spec" >> print r1
      else return ()
@@ -175,8 +185,9 @@ test = do
 
 test2 :: IO ()
 test2 = do
+  ss <- SMap.loadAxioms'
   r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
-    SMap.axioms
+    SMap.addAxioms' ss
     a <- forall "pre"
     b <- symbolize (plusA 1 >>> plusA 1) a
     return $ b .== a + 2

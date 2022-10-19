@@ -91,9 +91,12 @@ addAxioms' ss = do
     .|| empty .== empty
     .|| sJust u .== sJust identity
 
+loadAxioms' :: IO [String]
+loadAxioms' = loadAxioms "MaybeMap"
+
 test :: IO ThmResult
 test = do
-  ss <- loadAxioms "MaybeMap"
+  ss <- loadAxioms'
   proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
     addAxioms' ss
     k <- forall_

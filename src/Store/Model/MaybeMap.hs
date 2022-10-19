@@ -69,8 +69,8 @@ data Upd a b = Upd (Map.Map Key (Action a b)) deriving (Show,Eq,Ord)
 
 instance Avs (Upd a b) where
   type Rep (Upd a b) = SMap.U
-  toRep = undefined
-  repc = undefined
+  toRep (Upd m) | null m = pure SMap.identity 
+  repc = error "repc is not defined"
 
 instance Update (Upd a b) where
   type UState (Upd a b) = Map a b
@@ -155,3 +155,6 @@ lookupE = eform2 $ ArrF
     constrain $ SMap.hasVal (_1 a) v (_2 a)
     return v)
   undefined
+
+witness :: (G1 a b, Upd a b)
+witness = (undefined, undefined)

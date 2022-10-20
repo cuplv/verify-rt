@@ -27,7 +27,7 @@ instance AData IntUpd where
 
 instance Update IntUpd where
   type UState IntUpd = Int
-  idU = IntUpd 0
+  mkIdU = arrC 0 (IntUpd 0)
   seqU _ =
     (deconA *** deconA)
     >>> sumA

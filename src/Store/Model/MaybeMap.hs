@@ -69,12 +69,12 @@ data Upd a b = Upd (Map.Map Key (Action a b)) deriving (Show,Eq,Ord)
 
 instance Avs (Upd a b) where
   type Rep (Upd a b) = SMap.U
-  toRep (Upd m) | null m = pure SMap.identity 
+  toRep _ = forall_
   repc = error "repc is not defined"
 
 instance Update (Upd a b) where
   type UState (Upd a b) = Map a b
-  idU = Upd Map.empty
+  mkIdU = arrC SMap.identity (Upd Map.empty)
   seqU _ = ArrF
     (\a -> pure $ SMap.seq (_1 a) (_2 a))
     undefined

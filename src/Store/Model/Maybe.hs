@@ -31,7 +31,7 @@ instance (Avs a, Avs u) => AData (MaybeUpd a u) where
 
 instance (Update u, UState u ~ a) => Update (MaybeUpd a u) where
   type UState (MaybeUpd a u) = Maybe a
-  idU = MaybeUpd (Just (Right idU))
+  mkIdU = mkIdU >>> asRight >>> asJust >>> conA
   seqU = undefined
   applyU = undefined
   symU = undefined

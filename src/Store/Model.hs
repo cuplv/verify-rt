@@ -13,18 +13,21 @@ import Data.SBV.Tuple
 
 class (Avs u, Avs (UState u)) => Update u where
   type UState u
-  idU :: u
+  mkIdU :: Fun () u
   seqU :: u -> Fun (u,u) u
   applyU :: u -> Fun (u, UState u) (UState u)
   symU :: u -> Sy u -> Sy (UState u) -> Symbolic (Sy (UState u))
   symU z u s = symbolize (applyU z) (tuple (u,s))
+
+idU :: (Avs a, Update u) => Fun a u
+idU = forget >>> mkIdU
 
 seqE :: (Avs a, Update u) => u -> Fun a u -> Fun a u -> Fun a u
 seqE uw m1 m2 = (m1 &&& m2) >>> seqU uw
 
 instance Update () where
   type UState () = ()
-  idU = ()
+  mkIdU = ca ()
   seqU _ = ca ()
   applyU _ = ca ()
 
@@ -37,15 +40,15 @@ instance Avs (NoUpd s) where
 
 instance (Avs s) => Update (NoUpd s) where
   type UState (NoUpd s) = s
-  idU = NoUpd
+  mkIdU = ca NoUpd
   seqU _ = ca NoUpd
   applyU _ = tup2g2
 
 instance (Update a, Update b) => Update (a,b) where
   type UState (a,b) = (UState a, UState b)
-  idU = (idU,idU)
+  mkIdU = mkIdU &&& mkIdU
   seqU (aw,bw) =
-    tup2 $ \u1 u2 -> 
+    tup2 $ \u1 u2 ->
     tup2' u1 $ \a1 b1 ->
     tup2' u2 $ \a2 b2 ->
     seqE aw a1 a2 &&& seqE bw b1 b2

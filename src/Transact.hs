@@ -30,7 +30,7 @@ seqT (w1,w2) t1 t2 =
      >>> maybeElim
        (tup2 $ \u1 r ->
         tup2' r $ \u2 c ->
-        justE (seqE (w1,w2) (u1 &&& ca idU) (ca idU &&& u2) &&& c))
+        justE (seqE (w1,w2) (u1 &&& idU) (idU &&& u2) &&& c))
        (ca Nothing))
     (ca Nothing)
 

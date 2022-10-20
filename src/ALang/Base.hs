@@ -521,3 +521,10 @@ returnE = (>>> pureA)
 
 unitE :: (Avs a) => ALang t a ()
 unitE = ca ()
+
+letb
+  :: (Avs a, Avs b, Avs c) 
+  => ALang t a b 
+  -> (ALang t a b -> ALang t a c) 
+  -> ALang t a c
+letb a f = f a

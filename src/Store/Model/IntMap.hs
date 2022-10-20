@@ -9,6 +9,7 @@ import Symbol
 import qualified Symbol.IntMap as SMap
 import Store.Model
 import qualified Store.Model.Int as I
+import Transact
 
 import qualified Data.Map as Map
 import Data.SBV
@@ -39,18 +40,10 @@ instance (Avs a) => AData (Val a) where
       return $ tuple (a,v))
     (\(Val a b) -> (a,b))
 
--- data ValUpd a b = ValUpd (Maybe a, b) deriving (Show,Eq,Ord)
-
--- instance (Avs a, Avs b) => Avs (ValUpd a b) where
---   type Rep (ValUpd a b) = SMap.F
-
 data Map a = Map (Map.Map Key (Val a))
 
 instance Avs (Map a) where
   type Rep (Map a) = SMap.M
-  -- toRep (Map m) | null m = pure SMap.empty
-  --               | otherwise = forall_
-  -- repc = undefined
 
 empty :: (Avs a) => ALang t a (Map b)
 empty = undefined
@@ -79,28 +72,37 @@ instance Update (Upd a) where
     (\a -> pure $ SMap.update (_1 a) (_2 a))
     undefined
 
-insert :: (Avs a) => ALang t (Key, Val a) (Upd a)
-insert = ArrF
+insert' :: (Avs a) => ALang t (Key, Val a) (Upd a)
+insert' = ArrF
   (\a -> pure $ SMap.insert (_1 a) (_2 a))
   undefined
 
-insertE 
+insert 
   :: (Avs a, Avs b)
   => ALang t a Key 
   -> ALang t a (Val b)
   -> ALang t a (Upd b)
-insertE = eform2 insert
+insert = eform2 insert'
 
-delete :: (Avs a) => ALang t Key (Upd a)
-delete = ArrF
+modify 
+  :: (Avs a, Avs b)
+  => ALang t a Key 
+  -> ALang t a I.IntUpd 
+  -> ALang t a (Upd b)
+modify = eform2 $ ArrF
+  (\a -> pure $ SMap.modify (_1 a) (_2 a))
+  undefined
+
+delete' :: (Avs a) => ALang t Key (Upd a)
+delete' = ArrF
   (\a -> pure $ SMap.delete a)
   undefined
 
-deleteE 
+delete
   :: (Avs a, Avs b)
   => ALang t a Key 
   -> ALang t a (Upd b)
-deleteE = eform delete
+delete = eform delete'
 
 -- We don't actually want AData, since we have multiple constructors (insert, modify, delete) and we don't care about deconstructing.
 
@@ -153,3 +155,17 @@ lookupE = eform2 $ ArrF
 
 witness :: (G1 a, Upd a)
 witness = (undefined, undefined)
+
+intMapLift 
+  :: (Avs a, Avs b, Avs x)
+  => Fun (Context (G1 x), a) Key
+  -> Transact' I.IntG a b
+  -> Transact' (G1 x) a b
+intMapLift k t =
+  tup2 $ \ctx a ->
+  requireE (lookupE k (stateE ctx)) $ \v ->
+  tup2' (deconE v) $ \n _ ->
+  letb (conE (n &&& I.mkUniG)) $ \ctx' ->
+  requireE (eform2 t ctx' a) $ \r ->
+  tup2' r $ \u b ->
+  returnE (modify k u &&& b)

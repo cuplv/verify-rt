@@ -80,6 +80,9 @@ instance Grant IntG where
                         Just n -> Nothing
                         Nothing -> Just g)
 
+mkUniG :: (Avs a) => ALang t a IntG
+mkUniG = constA (IntG (Just 0) Nothing)
+
 lowerBoundA :: ALang t (Context IntG) (Maybe Int)
 lowerBoundA =
   (getState &&& (getGrant >>> deconA >>> tup2g1))

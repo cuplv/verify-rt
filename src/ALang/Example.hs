@@ -13,11 +13,15 @@ import qualified Data.SBV.Maybe as SMaybe
 import Store.Model
 import Store.Model.Int
 import Symbol
-import qualified Symbol.MaybeMap as SMap
-import Store.Model.MaybeMap (Map)
+import qualified Store.Model.IntMap as IMap
+import qualified Symbol.IntMap as SIMap
 import qualified Store.Model.MaybeMap as MMap
+import qualified Symbol.MaybeMap as SMMap
 import Transact
 import Verify
+
+type IMap = IMap.Map
+type MMap = MMap.Map
 
 mapWitness = MMap.witness
 
@@ -31,26 +35,35 @@ tpccSpec = tup2Spec (nonN, noLoss2)
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
 nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
+nonN2 :: Sy (IMap a) -> Sy (IMap a) -> Symbolic SBool
+nonN2 s1 s2 = do
+  (k,v1) <- SIMap.anyEntry s1
+  mv2 <- SIMap.lookup k s2
+  return $ SMaybe.maybe
+    sTrue
+    (\v2 -> (v1 .>= 0) .=> (v2 .>= 0))
+    mv2
+
 -- Spec for record table: no inserted record is ever deleted or
 -- modified.  For complete application, we will also want to allow
 -- certain modifications.
-noLoss :: Sy (Map a b) -> Sy (Map a b) -> Symbolic SBool
+noLoss :: Sy (MMap a b) -> Sy (MMap a b) -> Symbolic SBool
 noLoss s1 s2 = do
   -- forall k's that are present in the pre-state
   k <- forall_
-  constrain $ SMap.member k s1
+  constrain $ SMMap.member k s1
   -- they must match their value in the post-state
-  return (SMap.match k s1 s2)
+  return (SMMap.match k s1 s2)
 
 -- More detailed record table spec: No inserted record is ever
 -- deleted, and once an inserted record has its Maybe field filled in,
 -- it is no longer modified at all.
-noLoss2 :: Sy (Map a b) -> Sy (Map a b) -> Symbolic SBool
+noLoss2 :: Sy (MMap a b) -> Sy (MMap a b) -> Symbolic SBool
 noLoss2 s1 s2 = do
   -- For any (k,v1) entry in the pre-state
-  (k,v1) <- SMap.anyEntry s1
+  (k,v1) <- SMMap.anyEntry s1
   -- Lookup the corresponding v2 in the post-state
-  mv2 <- SMap.lookup k s2
+  mv2 <- SMMap.lookup k s2
   -- Ask whether the corresponding v2 exists
   return $ SMaybe.maybe
     -- If not, we've lost information.  Failure.
@@ -62,7 +75,7 @@ noLoss2 s1 s2 = do
        sTrue
        -- If it's a Just value, we must preserve that value.  And so
        -- we require that v1 and v2 match for success.
-       (const $ SMap.match k s1 s2)
+       (const $ SMMap.match k s1 s2)
        -- (const $ v1 .== v2)
        v1)
     mv2
@@ -70,7 +83,7 @@ noLoss2 s1 s2 = do
 -- Transactions
 
 -- Grant type for top-level Tpcc transactions
-type TpccG = (IntG,MapG')
+type TpccG = (StockG,MapG')
 
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
@@ -154,6 +167,10 @@ takeStockUnsafe = tup2 $ \ctx amt ->
   assertA (ctx `canSub` amt) $
   justE (subU (amt $+ ca 1) &&& amt)
 
+type StockG = IMap.G1 ()
+
+type StockU = IMap.Upd ()
+
 -- The first string is the delivery info (starting as Nothing), and
 -- the second string is the rest of the order information.
 type MapG' = MMap.G1 String String
@@ -179,9 +196,6 @@ addRecordBad = tup2 $ \ctx cfg ->
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."
 
-trueSpec :: Sy (Map k v) -> Sy (Map k v) -> Symbolic SBool
-trueSpec _ _ = return sTrue
-
 trueThm :: ThmResult -> Bool
 trueThm = not . modelExists
 
@@ -191,13 +205,13 @@ tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 -- suite...
 test :: IO ()
 test = do
-  ss <- SMap.loadAxioms'
+  ss <- SMMap.loadAxioms'
   (r1,r2) <- check intWitness (pure ()) takeStock nonN
   (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness (SMap.addAxioms' ss) deliverRecord noLoss2
+  (r5,r6) <- check mapWitness (SMMap.addAxioms' ss) deliverRecord noLoss2
   (r7,r8) <- check 
                (tup2dist (intWitness,mapWitness)) 
-               (SMap.addAxioms' ss)
+               (SMMap.addAxioms' ss)
                newOrder 
                tpccSpec
   if not $ trueThm r1
@@ -231,9 +245,9 @@ test = do
 
 test2 :: IO ()
 test2 = do
-  ss <- SMap.loadAxioms'
+  ss <- SMMap.loadAxioms'
   r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
-    SMap.addAxioms' ss
+    SMMap.addAxioms' ss
     a <- forall "pre"
     b <- symbolize (plusA 1 >>> plusA 1) a
     return $ b .== a + 2

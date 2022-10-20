@@ -88,28 +88,28 @@ instance Update (Upd a b) where
     (\a -> pure $ SMap.update (_1 a) (_2 a))
     undefined
 
-insert :: (Avs a, Avs b) => ALang t (Key, Val a b) (Upd a b)
-insert = ArrF
+insert' :: (Avs a, Avs b) => ALang t (Key, Val a b) (Upd a b)
+insert' = ArrF
   (\a -> pure $ SMap.insert (_1 a) (_2 a))
   undefined
 
-insertE 
+insert
   :: (Avs a, Avs b, Avs c) 
   => ALang t a Key 
   -> ALang t a (Val b c)
   -> ALang t a (Upd b c)
-insertE = eform2 insert
+insert = eform2 insert'
 
-delete :: (Avs a, Avs b) => ALang t Key (Upd a b)
-delete = ArrF
+delete' :: (Avs a, Avs b) => ALang t Key (Upd a b)
+delete' = ArrF
   (\a -> pure $ SMap.delete a)
   undefined
 
-deleteE 
+delete
   :: (Avs a, Avs b, Avs c) 
   => ALang t a Key 
   -> ALang t a (Upd b c)
-deleteE = eform delete
+delete = eform delete'
 
 -- We don't actually want AData, since we have multiple constructors (insert, modify, delete) and we don't care about deconstructing.
 

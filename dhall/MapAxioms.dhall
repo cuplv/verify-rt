@@ -101,6 +101,14 @@ in ''
 ''
 )
 
+-- Insert causes distinction
+++ ''
+(assert (forall (${qk1} ${qv1} ${qm1})
+  (=>
+    (not (${hasVal} k1 v1 m1))
+    (distinct m1 (${update} (${insert} k1 v1) m1)))))
+''
+
 -- Define modify update
 ++ (
 let m2 = "(${update} (${modify} k1 f1) m1)"

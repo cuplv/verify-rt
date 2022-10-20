@@ -8,6 +8,7 @@
 module ALang.Base where
 
 import ALang.Internal
+import ALang.Construct
 import Symbol
 
 import Data.SBV
@@ -68,10 +69,10 @@ funA = ArrF (const forall_)
 funE :: (Avs x, Avs a, Avs b) => ALang t x a -> (a -> b) -> ALang t x b
 funE m f = m >>> funA f
 
-constA :: (Avs a, Avs b) => b -> ALang t a b
+constA :: (Avs a, Avc b) => b -> ALang t a b
 constA b = ArrF (const $ toRep b) (const b)
 
-ca :: (Avs a, Avs b) => b -> ALang t a b
+ca :: (Avs a, Avc b) => b -> ALang t a b
 ca = constA
 
 forget :: (Avs a) => ALang t a ()
@@ -141,7 +142,7 @@ assertA
   => ALang t a Bool
   -> ALang t a (Maybe b)
   -> ALang t a (Maybe b)
-assertA p t = (idA &&& p) >>> iteA t (constA Nothing)
+assertA p t = (idA &&& p) >>> iteA t nothingE
 
 -- Tuples
 
@@ -241,11 +242,11 @@ tup3g2 = tup3t2 >>> tup2g1 >>> tup2g2
 tup3g3 :: (Avs a, Avs b, Avs c) => ALang t (a,b,c) c
 tup3g3 = tup3t2 >>> tup2g2
 
-tup2c1 :: (Avs a, Avs b) => a -> ALang t b (a,b)
+tup2c1 :: (Avc a, Avs b) => a -> ALang t b (a,b)
 tup2c1 a = constA a &&& idA
 
-tup2c2 :: (Avs a, Avs b) => b -> ALang t a (a,b)
-tup2c2 a = idA &&& constA a
+tup2c2 :: (Avs a, Avc b) => b -> ALang t a (a,b)
+tup2c2 b = idA &&& constA b
 
 -- Either
 
@@ -261,7 +262,7 @@ instance AApplicative Maybe where
   bothA = (m2eA *** m2eA) >>> bothA >>> e2mA
 
 instance AMonad Maybe where
-  bindA f = m2eA >>> (constA Nothing ||| f)
+  bindA f = m2eA >>> (nothingE ||| f)
 
 instance (Avs e) => AFunctor (Either e) where
   fmapA = onRight
@@ -365,6 +366,9 @@ e2bA = (constA False ||| constA True)
 asJust :: (Avs a) => ALang t a (Maybe a)
 asJust = ArrF (\a -> return $ SM.sJust a) Just
 
+nothingE :: (Avs a, Avs b) => ALang t a (Maybe b)
+nothingE = arrC SM.sNothing Nothing
+
 justE :: (Avs a, Avs b) => ALang t a b -> ALang t a (Maybe b)
 justE m = m >>> asJust
 
@@ -414,7 +418,7 @@ bindJust
   => ALang t a (Maybe b)
   -> (ALang t a b -> ALang t a (Maybe c))
   -> ALang t a (Maybe c)
-bindJust fm fj = maybePm fm fj (constA Nothing)
+bindJust fm fj = maybePm fm fj nothingE
 
 onJust :: (Avs a, Avs b) => ALang t a b -> ALang t (Maybe a) (Maybe b)
 onJust f = tup2c1 () >>> maybeA (idA *** f) idA >>> tup2g2

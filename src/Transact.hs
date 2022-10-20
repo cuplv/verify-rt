@@ -31,8 +31,8 @@ seqT (w1,w2) t1 t2 =
        (tup2 $ \u1 r ->
         tup2' r $ \u2 c ->
         justE (seqE (w1,w2) (u1 &&& idU) (idU &&& u2) &&& c))
-       (ca Nothing))
-    (ca Nothing)
+       nothingE)
+    nothingE
 
 transactS
   :: (GState g ~ UState u, Grant g, Update u, Avs w, Avs b)
@@ -67,7 +67,7 @@ check (gw,uw) ax f p = do
   return (r1,r2)
 
 cancelE :: (Avs a, Avs b) => ALang t a (Maybe b)
-cancelE = constA Nothing
+cancelE = nothingE
 
 requireE
   :: (Avs a, Avs b, Avs c)

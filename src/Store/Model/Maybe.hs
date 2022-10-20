@@ -21,6 +21,8 @@ type U u = MaybeUpd (UState u) u
 
 instance (Avs a, Avs u) => Avs (MaybeUpd a u) where
   type Rep (MaybeUpd a u) = Maybe (Either (Rep a) (Rep u))
+
+instance (Avc a, Avc u) => Avc (MaybeUpd a u) where
   toRep (MaybeUpd a) = toRep a
   repc = undefined
 

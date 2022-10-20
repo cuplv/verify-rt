@@ -133,7 +133,7 @@ addRecordBad = tup2 $ \ctx cfg ->
         let v = conE (justE (makeRecord amt) &&& ca ())
         in justE (MMap.insertE (ca 1) v &&& ca ()))
     -- When no key is granted
-    (ca Nothing)
+    nothingE
 
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."

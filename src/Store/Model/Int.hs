@@ -17,6 +17,8 @@ data IntUpd = IntUpd Int deriving (Show)
 
 instance Avs IntUpd where
   type Rep IntUpd = Integer
+
+instance Avc IntUpd where
   toRep (IntUpd i) = pure . fromIntegral $ i
   repc (IntUpd i) = repc i
 
@@ -47,6 +49,8 @@ data IntG
 
 instance Avs IntG where
   type Rep IntG = (Maybe Integer, Maybe Integer)
+
+instance Avc IntG where
   toRep (IntG e c) = fmap tuple $
     (,) <$> toRep e <*> toRep c
   repc (IntG e c) = repc (e,c)
@@ -112,6 +116,8 @@ data IntReq
 
 instance Avs IntReq where
   type Rep IntReq = (Maybe Integer, Maybe Integer, Maybe Integer)
+
+instance Avc IntReq where
   toRep (IntReq a b c) = fmap tuple $
     (,,) <$> toRep a <*> toRep b <*> toRep c
   repc (IntReq a b c) = repc (a,b,c)

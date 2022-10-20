@@ -24,6 +24,8 @@ data Val a b
 
 instance Avs (Val a b) where
   type Rep (Val a b) = SMap.V
+
+instance Avc (Val a b) where
   toRep (Val (Just _) _) = sJust <$> forall_
   toRep _ = pure sNothing
   repc (Val (Just _) _) = isJust
@@ -56,9 +58,15 @@ data Map a b = Map (Map.Map Int (Val a b))
 
 instance Avs (Map a b) where
   type Rep (Map a b) = SMap.M
-  toRep (Map m) | null m = pure SMap.empty
-                | otherwise = forall_
-  repc = undefined
+  -- toRep (Map m) | null m = pure SMap.empty
+  --               | otherwise = forall_
+  -- repc = undefined
+
+empty :: (Avs a) => ALang t a (Map b c)
+empty = undefined
+
+singleton :: (Avs a) => ALang t a (Key, Val b c) -> ALang t a (Map b c)
+singleton = undefined
 
 data Action a b
   = Insert Key (Val a b)
@@ -69,8 +77,8 @@ data Upd a b = Upd (Map.Map Key (Action a b)) deriving (Show,Eq,Ord)
 
 instance Avs (Upd a b) where
   type Rep (Upd a b) = SMap.U
-  toRep _ = forall_
-  repc = error "repc is not defined"
+  -- toRep _ = forall_
+  -- repc = error "repc is not defined"
 
 instance Update (Upd a b) where
   type UState (Upd a b) = Map a b

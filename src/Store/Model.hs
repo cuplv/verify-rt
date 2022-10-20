@@ -35,6 +35,8 @@ data NoUpd s = NoUpd deriving (Show,Eq,Ord)
 
 instance Avs (NoUpd s) where
   type Rep (NoUpd s) = ()
+
+instance Avc (NoUpd s) where
   toRep _ = return su
   repc _ _ = sTrue
 
@@ -89,6 +91,8 @@ data Context g
 
 instance (Grant g) => Avs (Context g) where
   type Rep (Context g) = (Rep (GState g), Rep g)
+
+instance (Grant g, Avc g, Avc (UState (GUpd g))) => Avc (Context g) where
   toRep (Context s g) = fmap tuple $
     (,) <$> toRep s <*> toRep g
   repc (Context s g) = repc (s,g)

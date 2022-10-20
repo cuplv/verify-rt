@@ -375,6 +375,16 @@ justE m = m >>> asJust
 fromJust :: (Avs a) => ALang t (a,Maybe a) a
 fromJust = maybeA (tup2g2 >>> tup2c2 ()) idA >>> tup2g1
 
+isJustE :: (Avs a, Avs b) => ALang t a (Maybe b) -> ALang t a Bool
+isJustE m = m >>> ArrF
+  (\a -> pure $ SM.isJust a)
+  (\a -> case a of
+           Just _ -> True
+           Nothing -> False)
+
+isNothingE :: (Avs a, Avs b) => ALang t a (Maybe b) -> ALang t a Bool
+isNothingE m = notE $ isJustE m
+
 m2eA :: (Avs a) => ALang t (Maybe a) (Either () a)
 m2eA = ArrF 
   (return . SM.maybe (literal (Left ())) sRight)

@@ -85,6 +85,14 @@ let baseAxioms =
     (exists (${qv1}) (${hasVal} k1 v1 m1)))))
 ''
 
+-- hasVal is unique
+++ ''
+(assert (forall (${qk1} ${qv1} ${qv2} ${qm1})
+  (=>
+    (and (${hasVal} k1 v1 m1) (${hasVal} k1 v2 m1))
+    (= v1 v2))))
+''
+
 -- Define identity update
 ++ ''
 (assert (forall (${qm1}) (= (${update} ${identity} m1) m1)))

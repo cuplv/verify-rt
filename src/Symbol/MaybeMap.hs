@@ -7,7 +7,7 @@ module Symbol.MaybeMap where
 
 import Symbol.Axioms
 
-import Prelude hiding (insert,seq)
+import Prelude hiding (insert,seq,lookup)
 
 import Data.SBV
 import Data.SBV.Control (registerUISMTFunction)
@@ -109,3 +109,27 @@ test = do
     k <- forall_
     m <- forall_
     return $ match k m m
+
+anyMember :: SBV M -> Symbolic (SBV K)
+anyMember s = do
+  k <- forall_
+  constrain $ member k s
+  return k
+
+lookup :: SBV K -> SBV M -> Symbolic (SBV (Maybe V))
+lookup k s = do
+  v <- forall_
+  constrain $ hasVal k v s
+  return $ ite (member k s) (sJust v) sNothing
+
+anyEntry :: SBV M -> Symbolic (SBV K, SBV V)
+anyEntry s = do
+  k <- anyMember s
+  v <- forall_
+  constrain $ hasVal k v s
+  return (k, v)
+
+hasEmptyEntry :: SBV K -> SBV M -> Symbolic SBool
+hasEmptyEntry k s = do
+  v <- lookup k s
+  return (isJust v .&& isNothing (fromJust v))

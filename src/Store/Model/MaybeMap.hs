@@ -142,6 +142,7 @@ instance Grant (G1 a b) where
       (s1 .== s2)
       (\k -> (k ./= k1) .=> SMap.match k1 s1 s2)
       g
+  useG = undefined
 
 memberE 
   :: (Avs a, Avs c, Avs b) 
@@ -156,12 +157,18 @@ lookupE
   :: (Avs a, Avs c, Avs b)
   => ALang t a Key
   -> ALang t a (Map b c)
-  -> ALang t a (Val b c)
+  -> ALang t a (Maybe (Val b c))
 lookupE = eform2 $ ArrF
-  (\a -> do
-    v <- forall_
-    constrain $ SMap.hasVal (_1 a) v (_2 a)
-    return v)
+  (\a -> SMap.lookup (_1 a) (_2 a))
+  undefined
+
+hasEmptyEntry
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a Key
+  -> ALang t a (Map b c)
+  -> ALang t a Bool
+hasEmptyEntry = eform2 $ ArrF
+  (\a -> SMap.hasEmptyEntry (_1 a) (_2 a))
   undefined
 
 witness :: (G1 a b, Upd a b)

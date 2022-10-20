@@ -9,6 +9,7 @@ import Atl
 import Data.SBV
 import Data.SBV.Tuple
 import qualified Data.SBV.List as SList
+import qualified Data.SBV.Maybe as SMaybe
 import Store.Model
 import Store.Model.Int
 import Symbol
@@ -24,12 +25,7 @@ mapWitness = MMap.witness
 
 -- Main TPCC spec, combining specs on the two data model components:
 -- the stock integer and the record table
-tpccSpec = tup2Spec (nonN, noLoss)
-
-tpccSpec2 s1 s2 = do
-  k <- forall_
-  constrain $ SMap.member k (_2 s1)
-  return (SMap.match k (_2 s1) (_2 s2))
+tpccSpec = tup2Spec (nonN, noLoss2)
 
 -- Spec for stock integer: it never goes negative
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
@@ -46,21 +42,47 @@ noLoss s1 s2 = do
   -- they must match their value in the post-state
   return (SMap.match k s1 s2)
 
+-- More detailed record table spec: No inserted record is ever
+-- deleted, and once an inserted record has its Maybe field filled in,
+-- it is no longer modified at all.
+noLoss2 :: Sy (Map a b) -> Sy (Map a b) -> Symbolic SBool
+noLoss2 s1 s2 = do
+  -- For any (k,v1) entry in the pre-state
+  (k,v1) <- SMap.anyEntry s1
+  -- Lookup the corresponding v2 in the post-state
+  mv2 <- SMap.lookup k s2
+  -- Ask whether the corresponding v2 exists
+  return $ SMaybe.maybe
+    -- If not, we've lost information.  Failure.
+    sFalse
+    -- If v2 exists, consider the value of v1.
+    (\_ -> SMaybe.maybe
+       -- If it's a Nothing value, then any value of v2 counts as
+       -- succeeding it.  Success.
+       sTrue
+       -- If it's a Just value, we must preserve that value.  And so
+       -- we require that v1 and v2 match for success.
+       (const $ SMap.match k s1 s2)
+       -- (const $ v1 .== v2)
+       v1)
+    mv2
+
 -- Transactions
 
-type TpccG k = (IntG,MapG')
+-- Grant type for top-level Tpcc transactions
+type TpccG = (IntG,MapG')
 
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
 -- transaction returns Nothing.
-newOrder :: Fun (Context (TpccG Int), Int) (Maybe (GUpd (TpccG Int), ()))
+newOrder :: Transact' TpccG Int ()
 newOrder = seqT -- sequence two transactions
   (snd intWitness, snd mapWitness) -- (ignore.. fixes ambiguous type issues)
   (tup2l1 takeStock) -- subtracts, outputs the subtracted amount
   (tup2l2 addRecord) -- records the subtracted amount
 
 -- Take given amount from the stock field, return the amount subtracted.
-takeStock :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
+takeStock :: Transact' IntG Int Int
 takeStock =
   -- Unpack our two inputs: the state+grant context, and the amount to
   -- subtract from the stock.
@@ -76,7 +98,7 @@ takeStock =
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
-addRecord :: Fun (Context (MapG'), Int) (Maybe (MapU', ()))
+addRecord :: Transact' MapG' Int ()
 addRecord =
   -- Unpack our two inputs: the state+grant context, and the order
   -- amount.
@@ -91,16 +113,33 @@ addRecord =
   assertA (notE $ MMap.memberE key (stateE ctx)) $
   -- Our update inserts a string, based on the order amount, into
   -- the table using the provided key.
-  let v = conE (justE (makeRecord amt) &&& unitE)
+  let v = conE (nothingE &&& makeRecord amt)
       upd = MMap.insertE key v
   -- The output is a pair: our update, and the transaction's return
   -- value.  This transaction only returns a () unit value.
   in returnE (upd &&& unitE)
 
-  -- The record is simply a stringe message including the amount.
+  -- The record is simply a string message including the amount.
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."
 
+-- Update the delivery info for an order record.
+deliverRecord :: Transact' MapG' String ()
+deliverRecord =
+  tup2 $ \ctx deliv ->
+  -- Require an exclusive key.
+  requireE (deconE $ grantE ctx) $ \key ->
+  -- Get that key's existing value (must be present).
+  requireE (MMap.lookupE key (stateE ctx)) $ \val ->
+  -- Unpack value into delivery info and order info.
+  tup2' (deconE val) $ \deliv1 order ->
+  -- Existing delivery info must be empty, to avoid overwriting it.
+  assertA (isNothingE deliv1) $
+  -- The new value we insert includes our input value (deliv) and the
+  -- previously existing order information.
+  let v = conE (justE deliv &&& order)
+      upd = MMap.insertE key v
+  in returnE (upd &&& unitE)
 
 -- Unsafe versions that do not verify.
 
@@ -108,20 +147,22 @@ addRecord =
 -- fails both the application property "store stays >= 0" and the
 -- coordination property "transaction updates do not exceed
 -- capabilities."
-takeStockUnsafe :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))
+takeStockUnsafe :: Transact' IntG Int Int
 takeStockUnsafe = tup2 $ \ctx amt ->
   assertA (amt $>= ca 0) $
   assertA (ctx `atLeast` amt) $
   assertA (ctx `canSub` amt) $
   justE (subU (amt $+ ca 1) &&& amt)
 
-type MapG' = MMap.G1 String ()
+-- The first string is the delivery info (starting as Nothing), and
+-- the second string is the rest of the order information.
+type MapG' = MMap.G1 String String
 
-type MapU' = MMap.Upd String ()
+type MapU' = MMap.Upd String String
 
 -- Uses key given by user, with no guarantee that it has not been used
 -- in the map already.
-addRecordBad :: Fun (Context (MapG'), (Int)) (Maybe (MapU', ()))
+addRecordBad :: Transact' MapG' Int ()
 addRecordBad = tup2 $ \ctx cfg ->
   ((stateE ctx &&& cfg) &&& deconE (grantE ctx)) >>> maybeElim
     -- When key is granted
@@ -130,14 +171,13 @@ addRecordBad = tup2 $ \ctx cfg ->
         -- Check that it has not been used
         assertA (notE $ MMap.memberE key records) $
         -- Use a key unrelated to the granted key... unsafe!
-        let v = conE (justE (makeRecord amt) &&& ca ())
+        let v = conE (nothingE &&& makeRecord amt)
         in justE (MMap.insertE (ca 1) v &&& ca ()))
     -- When no key is granted
     nothingE
 
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."
-
 
 trueSpec :: Sy (Map k v) -> Sy (Map k v) -> Symbolic SBool
 trueSpec _ _ = return sTrue
@@ -154,7 +194,7 @@ test = do
   ss <- SMap.loadAxioms'
   (r1,r2) <- check intWitness (pure ()) takeStock nonN
   (r3,r4) <- check intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness (SMap.addAxioms' ss) addRecord noLoss
+  (r5,r6) <- check mapWitness (SMap.addAxioms' ss) deliverRecord noLoss2
   (r7,r8) <- check 
                (tup2dist (intWitness,mapWitness)) 
                (SMap.addAxioms' ss)

@@ -13,7 +13,7 @@ import Data.SBV
 import Data.SBV.Tuple
 import qualified Data.SBV.Maybe as SM
 
-data IntUpd = IntUpd Int deriving (Show)
+data IntUpd = IntUpd Int deriving (Show,Eq,Ord)
 
 instance Avs IntUpd where
   type Rep IntUpd = Integer

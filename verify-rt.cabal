@@ -17,11 +17,13 @@ library
                     , Compile
                     , Store.Model
                     , Store.Model.Int
+                    , Store.Model.IntMap
                     , Store.Model.Map
                     , Store.Model.Maybe
                     , Store.Model.MaybeMap
                     , Symbol
                     , Symbol.Axioms
+                    , Symbol.IntMap
                     , Symbol.Map
                     , Symbol.MaybeMap
                     , Transact

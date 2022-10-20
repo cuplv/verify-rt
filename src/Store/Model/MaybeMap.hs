@@ -54,7 +54,7 @@ instance (Avs a, Avs b) => AData (Val a b) where
 -- instance (Avs a, Avs b) => Avs (ValUpd a b) where
 --   type Rep (ValUpd a b) = SMap.F
 
-data Map a b = Map (Map.Map Int (Val a b))
+data Map a b = Map (Map.Map Key (Val a b))
 
 instance Avs (Map a b) where
   type Rep (Map a b) = SMap.M
@@ -69,16 +69,14 @@ singleton :: (Avs a) => ALang t a (Key, Val b c) -> ALang t a (Map b c)
 singleton = undefined
 
 data Action a b
-  = Insert Key (Val a b)
-  | Delete Key
+  = Insert (Val a b)
+  | Delete
   deriving (Show,Eq,Ord)
 
 data Upd a b = Upd (Map.Map Key (Action a b)) deriving (Show,Eq,Ord)
 
 instance Avs (Upd a b) where
   type Rep (Upd a b) = SMap.U
-  -- toRep _ = forall_
-  -- repc = error "repc is not defined"
 
 instance Update (Upd a b) where
   type UState (Upd a b) = Map a b

@@ -7,6 +7,7 @@ import ALang
 import Atl
 -- import Data.Map (Map)
 import Data.SBV
+import Data.SBV.Tuple
 import qualified Data.SBV.List as SList
 import Store.Model
 import Store.Model.Int
@@ -24,6 +25,11 @@ mapWitness = MMap.witness
 -- Main TPCC spec, combining specs on the two data model components:
 -- the stock integer and the record table
 tpccSpec = tup2Spec (nonN, noLoss)
+
+tpccSpec2 s1 s2 = do
+  k <- forall_
+  constrain $ SMap.member k (_2 s1)
+  return (SMap.match k (_2 s1) (_2 s2))
 
 -- Spec for stock integer: it never goes negative
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
@@ -115,17 +121,17 @@ type MapU' = MMap.Upd String ()
 
 -- Uses key given by user, with no guarantee that it has not been used
 -- in the map already.
-addRecordBad :: Fun (Context (MapG'), (Int, MMap.Key)) (Maybe (MapU', ()))
+addRecordBad :: Fun (Context (MapG'), (Int)) (Maybe (MapU', ()))
 addRecordBad = tup2 $ \ctx cfg ->
   ((stateE ctx &&& cfg) &&& deconE (grantE ctx)) >>> maybeElim
     -- When key is granted
     (tup2 $ \s key ->
-      tup2' s $ \records cfg -> tup2' cfg $ \amt k ->
+      tup2' s $ \records amt ->
         -- Check that it has not been used
         assertA (notE $ MMap.memberE key records) $
         -- Use a key unrelated to the granted key... unsafe!
         let v = conE (justE (makeRecord amt) &&& ca ())
-        in justE (MMap.insertE k v &&& ca ()))
+        in justE (MMap.insertE (ca 1) v &&& ca ()))
     -- When no key is granted
     (ca Nothing)
 

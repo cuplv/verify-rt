@@ -157,15 +157,14 @@ witness :: (G1 a, Upd a)
 witness = (undefined, undefined)
 
 intMapLift 
-  :: (Avs a, Avs b, Avs x)
-  => Fun (Context (G1 x), a) Key
-  -> Transact' I.IntG a b
-  -> Transact' (G1 x) a b
-intMapLift k t =
-  tup2 $ \ctx a ->
+  :: (Avs a, Avs w, Avs r, Avs x)
+  => Fun a Key
+  -> Transact2 a I.IntG w r
+  -> Transact2 a (G1 x) w r
+intMapLift k t ctx a =
   requireE (lookupE k (stateE ctx)) $ \v ->
   tup2' (deconE v) $ \n _ ->
   letb (conE (n &&& I.mkUniG)) $ \ctx' ->
-  requireE (eform2 t ctx' a) $ \r ->
+  requireE (t ctx' a) $ \r ->
   tup2' r $ \u b ->
   returnE (modify k u &&& b)

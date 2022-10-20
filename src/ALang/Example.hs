@@ -56,8 +56,8 @@ type TpccG k = (IntG,MapG')
 newOrder :: Fun (Context (TpccG Int), Int) (Maybe (GUpd (TpccG Int), ()))
 newOrder = seqT -- sequence two transactions
   (snd intWitness, snd mapWitness) -- (ignore.. fixes ambiguous type issues)
-  takeStock -- subtracts, outputs the subtracted amount
-  addRecord -- records the subtracted amount
+  (tup2l1 takeStock) -- subtracts, outputs the subtracted amount
+  (tup2l2 addRecord) -- records the subtracted amount
 
 -- Take given amount from the stock field, return the amount subtracted.
 takeStock :: Fun (Context IntG, Int) (Maybe (IntUpd, Int))

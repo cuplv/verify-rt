@@ -13,26 +13,43 @@ import qualified Data.SBV.Maybe as SM
 
 type Transact g w u b = Fun (Context g, w) (Maybe (u,b))
 
-seqT
-  :: (Avs a, Avs b, Avs c, Grant g1, Grant g2)
-  => (GUpd g1, GUpd g2)
-  -> Fun (Context g1, a) (Maybe (GUpd g1, b))
-  -> Fun (Context g2, b) (Maybe (GUpd g2, c))
-  -> Fun (Context (g1,g2), a) (Maybe (GUpd (g1,g2), c))
-seqT (w1,w2) t1 t2 = 
+type Transact' g a b = Transact g a (GUpd g) b
+
+tup2l1
+  :: (Avs a, Avs b, Grant g1, Grant g2)
+  => Transact' g1 a b
+  -> Transact' (g1,g2) a b
+tup2l1 t =
   tup2 $ \ctx a ->
-  tup2' (tup2Ctx ctx) $ \ctx1 ctx2 ->
-  (ctx2 &&& eform2 t1 ctx1 a)
-  >>> maybeElim
-    (tup2 $ \ctx2 r ->
-     tup2' r $ \u1 b ->
-     (u1 &&& eform2 t2 ctx2 b)
-     >>> maybeElim
-       (tup2 $ \u1 r ->
-        tup2' r $ \u2 c ->
-        justE (seqE (w1,w2) (u1 &&& idU) (idU &&& u2) &&& c))
-       nothingE)
-    nothingE
+  tup2' (tup2Ctx ctx) $ \ctx1 _ ->
+  requireE (eform2 t ctx1 a) $ \r ->
+  tup2' r $ \u1 b ->
+  returnE ((u1 &&& idU) &&& b)
+
+tup2l2
+  :: (Avs a, Avs b, Grant g1, Grant g2)
+  => Transact' g2 a b
+  -> Transact' (g1,g2) a b
+tup2l2 t =
+  tup2 $ \ctx a ->
+  tup2' (tup2Ctx ctx) $ \_ ctx2 ->
+  requireE (eform2 t ctx2 a) $ \r ->
+  tup2' r $ \u2 b ->
+  returnE ((idU &&& u2) &&& b)
+
+seqT
+  :: (Avs a, Avs b, Avs c, Grant g)
+  => GUpd g
+  -> Transact' g a b
+  -> Transact' g b c
+  -> Transact' g a c
+seqT w t1 t2 =
+  tup2 $ \ctx a ->
+  requireE (eform2 t1 ctx a) $ \r1 ->
+  tup2' r1 $ \u1 b ->
+  requireE (eform2 t2 ctx b) $ \r2 ->
+  tup2' r2 $ \u2 c ->
+  returnE (seqE w u1 u2 &&& c)
 
 transactS
   :: (GState g ~ UState u, Grant g, Update u, Avs w, Avs b)

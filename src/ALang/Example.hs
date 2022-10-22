@@ -202,7 +202,11 @@ addRecordBad = tup2 $ \ctx cfg ->
           "Order for " ++ show n ++ " units."
 
 trueThm :: ThmResult -> Bool
-trueThm = not . modelExists
+trueThm t =
+  not (modelExists t)
+  && case t of
+       (ThmResult (Unknown _ UnknownTimeOut)) -> False
+       _ -> True
 
 tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 
@@ -213,7 +217,7 @@ test = do
   ss <- SMMap.loadAxioms'
   (r1,r2) <- check2 intWitness (pure ()) takeStock nonN
   (r3,r4) <- check2 intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness (SMMap.addAxioms' ss) deliverRecord noLoss2
+  (r5,r6) <- check mapWitness (SMMap.addAxioms' ss) addRecord noLoss2
   -- (r7,r8) <- check 
   --              (tup2dist (intWitness,mapWitness)) 
   --              (SMMap.addAxioms' ss)

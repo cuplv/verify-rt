@@ -84,11 +84,13 @@ check
   -> IO (ThmResult, ThmResult)
 check (gw,uw) ax f p = do
   r1 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
     ax
     conf <- forall "config"
     let t = transactS uw f conf
     tsSpec gw t p
   r2 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
     ax
     conf <- forall "config"
     let t = transactS uw f conf
@@ -104,11 +106,13 @@ check2
   -> IO (ThmResult, ThmResult)
 check2 (gw,uw) ax f p = do
   r1 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
     ax
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsSpec gw t p
   r2 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
     ax
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf

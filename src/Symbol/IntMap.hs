@@ -33,6 +33,9 @@ type F = Integer
 empty :: SBV M
 empty = uninterpret $ fname "empty"
 
+singleton :: SBV K -> SBV V -> SBV M
+singleton = uninterpret $ fname "singleton"
+
 member :: SBV K -> SBV M -> SBool
 member = uninterpret $ fname "member"
 
@@ -74,6 +77,7 @@ addAxioms' ss = do
   constrain $
     member k m
     .|| hasVal k v m
+    .|| empty .== singleton k v
     .|| match k m m
     .|| valUpdate f v .== v
     .|| modify k f .== identity

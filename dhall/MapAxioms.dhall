@@ -5,6 +5,7 @@ let lib = ./lib.dhall in
 let mkfun = \(name : Text) -> "${name}XZ${i.map}"
 
 let empty = mkfun "empty"
+let singleton = mkfun "singleton"
 let member = mkfun "member"
 let hasVal = mkfun "hasVal"
 let match = mkfun "match"
@@ -34,6 +35,21 @@ let baseAxioms =
 ''
 (assert (forall (${qk1}) (not (${member} k1 ${empty}))))
 ''
+
+-- Define singleton map
+++ (
+let m = "(${singleton} k1 v1)"
+in ''
+(assert (forall (${qk1} ${qv1})
+  (and
+    (${hasVal} k1 v1 ${m})
+    (${member} k1 ${m}))))
+
+(assert (forall (${qk1} ${qk2} ${qv1})
+  (=>
+    (distinct k1 k2)
+    (not (${member} k2 ${m})))))
+'')
 
 -- Define match 
 ++ ''

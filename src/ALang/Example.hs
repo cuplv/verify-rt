@@ -29,7 +29,7 @@ mapWitness = MMap.witness
 
 -- Main TPCC spec, combining specs on the two data model components:
 -- the stock integer and the record table
-tpccSpec = tup2Spec (nonN2, noLoss2)
+tpccSpec = tup2Spec (nonN, noLoss2)
 
 -- Spec for stock integer: it never goes negative
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
@@ -83,15 +83,15 @@ noLoss2 s1 s2 = do
 -- Transactions
 
 -- Grant type for top-level Tpcc transactions
-type TpccG = (StockG,MapG')
+type TpccG = (IntG,MapG')
 
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
 -- transaction returns Nothing.
-newOrder :: (Avs a) => Transact2 a TpccG (IMap.Key, Int) ()
+newOrder :: (Avs a) => Transact2 a TpccG Int ()
 newOrder = seqT
-  (snd IMap.witness, snd mapWitness)
-  (tup2l1 takeStock')
+  (snd intWitness, snd mapWitness)
+  (tup2l1 takeStock)
   (tup2l2 addRecord)
 -- newOrder = seqT -- sequence two transactions
 --   (snd intWitness, snd mapWitness) -- (ignore.. fixes ambiguous type issues)
@@ -219,7 +219,7 @@ test = do
   (r3,r4) <- check2 intWitness (pure ()) takeStockUnsafe nonN
   (r5,r6) <- check2 mapWitness (SMMap.addAxioms' ssMM) addRecord noLoss2
   (r7,r8) <- check2
-               (tup2dist (IMap.witness,mapWitness)) 
+               (tup2dist (intWitness,mapWitness)) 
                (SMMap.addAxioms' ssMM >> SIMap.addAxioms' ssIM)
                newOrder 
                tpccSpec

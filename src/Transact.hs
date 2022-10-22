@@ -39,27 +39,25 @@ tup2l1 t ctx a =
   returnE ((u1 &&& idU) &&& b)
 
 tup2l2
-  :: (Avs a, Avs b, Grant g1, Grant g2)
-  => Transact' g2 a b
-  -> Transact' (g1,g2) a b
-tup2l2 t =
-  tup2 $ \ctx a ->
+  :: (Avs a, Avs w, Avs r, Grant g1, Grant g2)
+  => Transact2 a g2 w r
+  -> Transact2 a (g1,g2) w r
+tup2l2 t ctx a =
   tup2' (tup2Ctx ctx) $ \_ ctx2 ->
-  requireE (eform2 t ctx2 a) $ \r ->
+  requireE (t ctx2 a) $ \r ->
   tup2' r $ \u2 b ->
   returnE ((idU &&& u2) &&& b)
 
 seqT
-  :: (Avs a, Avs b, Avs c, Grant g)
+  :: (Avs x, Avs a, Avs b, Avs c, Grant g)
   => GUpd g
-  -> Transact' g a b
-  -> Transact' g b c
-  -> Transact' g a c
-seqT w t1 t2 =
-  tup2 $ \ctx a ->
-  requireE (eform2 t1 ctx a) $ \r1 ->
+  -> Transact2 x g a b
+  -> Transact2 x g b c
+  -> Transact2 x g a c
+seqT w t1 t2 ctx a =
+  requireE (t1 ctx a) $ \r1 ->
   tup2' r1 $ \u1 b ->
-  requireE (eform2 t2 ctx b) $ \r2 ->
+  requireE (t2 ctx b) $ \r2 ->
   tup2' r2 $ \u2 c ->
   returnE (seqE w u1 u2 &&& c)
 

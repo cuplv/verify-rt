@@ -29,7 +29,7 @@ mapWitness = MMap.witness
 
 -- Main TPCC spec, combining specs on the two data model components:
 -- the stock integer and the record table
-tpccSpec = tup2Spec (nonN, noLoss2)
+tpccSpec = tup2Spec (nonN2, noLoss2)
 
 -- Spec for stock integer: it never goes negative
 nonN :: Sy Int -> Sy Int -> Symbolic SBool
@@ -88,8 +88,11 @@ type TpccG = (StockG,MapG')
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
 -- transaction returns Nothing.
-newOrder :: Transact' TpccG Int ()
-newOrder = undefined
+newOrder :: (Avs a) => Transact2 a TpccG (IMap.Key, Int) ()
+newOrder = seqT
+  (snd IMap.witness, snd mapWitness)
+  (tup2l1 takeStock')
+  (tup2l2 addRecord)
 -- newOrder = seqT -- sequence two transactions
 --   (snd intWitness, snd mapWitness) -- (ignore.. fixes ambiguous type issues)
 --   (tup2l1 takeStock') -- subtracts, outputs the subtracted amount
@@ -116,11 +119,8 @@ takeStock ctx amt =
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
-addRecord :: Transact' MapG' Int ()
-addRecord =
-  -- Unpack our two inputs: the state+grant context, and the order
-  -- amount.
-  tup2 $ \ctx amt ->
+addRecord :: (Avs a) => Transact2 a MapG' Int ()
+addRecord ctx amt =
   -- Extract the key from the grant.  When the grant holds a key, it
   -- means we have the exclusive permission to insert/modify/delete on
   -- that key.  If the grant is empty, we stop here and cancel the
@@ -142,9 +142,8 @@ addRecord =
           "Order for " ++ show n ++ " units."
 
 -- Update the delivery info for an order record.
-deliverRecord :: Transact' MapG' String ()
-deliverRecord =
-  tup2 $ \ctx deliv ->
+deliverRecord :: (Avs a) => Transact2 a MapG' String ()
+deliverRecord ctx deliv =
   -- Require an exclusive key.
   requireE (deconE $ grantE ctx) $ \key ->
   -- Get that key's existing value (must be present).
@@ -214,15 +213,16 @@ tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 -- suite...
 test :: IO ()
 test = do
-  ss <- SMMap.loadAxioms'
+  ssMM <- SMMap.loadAxioms'
+  ssIM <- SIMap.loadAxioms'
   (r1,r2) <- check2 intWitness (pure ()) takeStock nonN
   (r3,r4) <- check2 intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check mapWitness (SMMap.addAxioms' ss) addRecord noLoss2
-  -- (r7,r8) <- check 
-  --              (tup2dist (intWitness,mapWitness)) 
-  --              (SMMap.addAxioms' ss)
-  --              newOrder 
-  --              tpccSpec
+  (r5,r6) <- check2 mapWitness (SMMap.addAxioms' ssMM) addRecord noLoss2
+  (r7,r8) <- check2
+               (tup2dist (IMap.witness,mapWitness)) 
+               (SMMap.addAxioms' ssMM >> SIMap.addAxioms' ssIM)
+               newOrder 
+               tpccSpec
   if not $ trueThm r1
      then putStrLn "Error: good failed spec" >> print r1
      else return ()
@@ -241,14 +241,14 @@ test = do
   if not $ trueThm r6
      then putStrLn "Error: good map failed write" >> print r6
      else return ()
-  -- if not $ trueThm r7
-  --    then putStrLn "Error: newOrder failed spec" >> print r7
-  --    else return ()
-  -- if not $ trueThm r8
-  --    then putStrLn "Error: newOrder failed write" >> print r8
-  --    else return ()
+  if not $ trueThm r7
+     then putStrLn "Error: newOrder failed spec" >> print r7
+     else return ()
+  if not $ trueThm r8
+     then putStrLn "Error: newOrder failed write" >> print r8
+     else return ()
 
-  if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4) && trueThm r5 && trueThm r6 -- && trueThm r7 && trueThm r8
+  if trueThm r1 && trueThm r2 && not (trueThm r3) && not (trueThm r4) && trueThm r5 && trueThm r6 && trueThm r7 && trueThm r8
      then putStrLn "[OK]"
      else putStrLn "[ERROR]"
 

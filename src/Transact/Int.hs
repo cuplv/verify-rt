@@ -10,6 +10,9 @@ import Data.SBV
 nonNegative :: Sy Int -> Sy Int -> Symbolic SBool
 nonNegative s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
+freezeTo :: Integer -> Sy Int -> Sy Int -> Symbolic SBool
+freezeTo n s1 s2 = return $ (s1 .== literal n) .=> (s2 .== literal n)
+
 -- Take given amount from the stock field, return the amount subtracted.
 takeStock :: (Avs a) => Transact a IntG Int Int
 takeStock ctx amt =

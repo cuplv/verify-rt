@@ -21,3 +21,6 @@ takeStock ctx amt =
   assertA (ctx `canSub` amt) $
   -- Subtract 'amt', and also pass 'amt' on as the return value
   returnE (subU amt &&& amt)
+
+witness :: (IntG,IntUpd)
+witness = undefined

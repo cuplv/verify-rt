@@ -5,7 +5,7 @@
 
 module Symbol.IntMap where
 
-import Symbol.Axioms
+import Symbol
 
 import Prelude hiding (insert,seq,lookup)
 
@@ -87,14 +87,14 @@ addAxioms' ss = do
     .|| empty .== empty
     .|| sJust u .== sJust identity
 
-loadAxioms' :: IO [String]
-loadAxioms' = loadAxioms "IntMap"
+axioms :: Axioms
+axioms = mkAxiomLoader "IntMap" addAxioms'
 
 test :: IO ThmResult
 test = do
-  ss <- loadAxioms'
+  ss <- loadAxioms axioms
   proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
-    addAxioms' ss
+    applyAxioms axioms ss
     k <- forall_
     m1 <- forall_
     m2 <- forall_

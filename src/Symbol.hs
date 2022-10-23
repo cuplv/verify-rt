@@ -8,6 +8,8 @@
 
 module Symbol where
 
+import Symbol.Axioms (loadAxiomsDhall)
+
 import Data.SBV
 import qualified Data.SBV.Either as SE
 import qualified Data.SBV.List as SL
@@ -152,3 +154,14 @@ bimapM
 bimapM ml mr = eitherM (\a -> SE.sLeft <$> ml a) (\a -> SE.sRight <$> mr a)
 
 type Binr s = s -> s -> Symbolic SBool
+
+type Axioms = (IO [String], [String] -> Symbolic ())
+
+mkAxiomLoader :: String -> ([String] -> Symbolic ()) -> Axioms
+mkAxiomLoader s f = (loadAxiomsDhall s, f)
+
+loadAxioms :: Axioms -> IO [String]
+loadAxioms = fst
+
+applyAxioms :: Axioms -> [String] -> Symbolic ()
+applyAxioms = snd

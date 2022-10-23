@@ -213,14 +213,12 @@ tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 -- suite...
 test :: IO ()
 test = do
-  ssMM <- SMMap.loadAxioms'
-  ssIM <- SIMap.loadAxioms'
-  (r1,r2) <- check2 intWitness (pure ()) takeStock nonN
-  (r3,r4) <- check2 intWitness (pure ()) takeStockUnsafe nonN
-  (r5,r6) <- check2 mapWitness (SMMap.addAxioms' ssMM) addRecord noLoss2
-  (r7,r8) <- check2
+  (r1,r2) <- check intWitness takeStock nonN
+  (r3,r4) <- check intWitness takeStockUnsafe nonN
+  (r5,r6) <- checkWith mapWitness SMMap.axioms addRecord noLoss2
+  (r7,r8) <- checkWith
                (tup2dist (intWitness,mapWitness)) 
-               (SMMap.addAxioms' ssMM >> SIMap.addAxioms' ssIM)
+               SMMap.axioms
                newOrder 
                tpccSpec
   if not $ trueThm r1
@@ -254,9 +252,9 @@ test = do
 
 test2 :: IO ()
 test2 = do
-  ss <- SMMap.loadAxioms'
+  ss <- loadAxioms SMMap.axioms
   r <- proveWith (z3 { verbose = True, satTrackUFs = False }) $ do
-    SMMap.addAxioms' ss
+    applyAxioms SMMap.axioms ss
     a <- forall "pre"
     b <- symbolize (plusA 1 >>> plusA 1) a
     return $ b .== a + 2

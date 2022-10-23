@@ -52,3 +52,6 @@ test-suite verify-rt-test
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
     build-depends:    base ^>=4.15.1.0
+                    , verify-rt
+                    , tasty
+                    , tasty-hunit

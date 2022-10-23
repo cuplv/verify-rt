@@ -63,23 +63,43 @@ transactS z f w ctx pre = do
   let u = _1 (SM.fromJust mu)
   symU z u pre
 
-check2
+checkWith
   :: (Grant g, Avs w, Avs r)
   => (g, GUpd g)
-  -> Symbolic () -- domain-specific axioms
+  -> Axioms -- domain-specific axioms
   -> TransactComp g w r
   -> Spec g
   -> IO (ThmResult, ThmResult)
-check2 (gw,uw) ax f p = do
+checkWith (gw,uw) ax f p = do
+  ss <- loadAxioms ax
   r1 <- proveWith z3 {satTrackUFs = False} $ do
     setTimeOut 2000
-    ax
+    applyAxioms ax ss
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsSpec gw t p
   r2 <- proveWith z3 {satTrackUFs = False} $ do
     setTimeOut 2000
-    ax
+    applyAxioms ax ss
+    conf <- forall "config"
+    let t = transactS uw (f tup2g1 tup2g2) conf
+    tsWrite gw t p
+  return (r1,r2)
+
+check
+  :: (Grant g, Avs w, Avs r)
+  => (g, GUpd g)
+  -> TransactComp g w r
+  -> Spec g
+  -> IO (ThmResult, ThmResult)
+check (gw,uw) f p = do
+  r1 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
+    conf <- forall "config"
+    let t = transactS uw (f tup2g1 tup2g2) conf
+    tsSpec gw t p
+  r2 <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut 2000
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsWrite gw t p

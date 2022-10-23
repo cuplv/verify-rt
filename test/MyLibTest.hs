@@ -1,5 +1,8 @@
 module Main (main) where
 
+import Transact
+import Transact.Int
+
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -13,7 +16,7 @@ tests = testGroup "Tests"
 
 intTests = testGroup "Int"
   [testCase "Good takeStock" $
-     check takeStock nonN @?= Right ()
-   testCase "Bad takeStock" $
-     check badTakeStock nonN @?= Left 
+     (iResult <$> check witness takeStock nonN) @?= Right ()
+  ,testCase "Bad takeStock" $
+     (iResult <$> check witness badTakeStock nonN) @?= Left ()
   ]

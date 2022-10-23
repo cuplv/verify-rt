@@ -22,5 +22,16 @@ takeStock ctx amt =
   -- Subtract 'amt', and also pass 'amt' on as the return value
   returnE (subU amt &&& amt)
 
+-- Unsafe version subtracts 1 more than it asks about.  It therefore
+-- fails both the application property "store stays >= 0" and the
+-- coordination property "transaction updates do not exceed
+-- capabilities."
+badTakeStock :: (Avs a) => Transact a IntG Int Int
+badTakeStock ctx amt =
+  assertA (amt $>= ca 0) $
+  assertA (ctx `atLeast` amt) $
+  assertA (ctx `canSub` amt) $
+  justE (subU (amt $+ ca 1) &&& amt)
+
 witness :: (IntG,IntUpd)
 witness = undefined

@@ -200,12 +200,12 @@ addRecordBad ctx cfg =
   where makeRecord amt = funE amt $ \n ->
           "Order for " ++ show n ++ " units."
 
-trueThm :: ThmResult -> Bool
-trueThm t =
-  not (modelExists t)
-  && case t of
-       (ThmResult (Unknown _ UnknownTimeOut)) -> False
-       _ -> True
+-- trueThm :: ThmResult -> Bool
+-- trueThm t =
+--   not (modelExists t)
+--   && case t of
+--        (ThmResult (Unknown _ UnknownTimeOut)) -> False
+--        _ -> True
 
 tup2dist ((a,b),(c,d)) = ((a,c),(b,d))
 

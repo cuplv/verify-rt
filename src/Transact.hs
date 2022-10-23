@@ -63,6 +63,18 @@ transactS z f w ctx pre = do
   let u = _1 (SM.fromJust mu)
   symU z u pre
 
+trueThm :: ThmResult -> Bool
+trueThm t =
+  not (modelExists t)
+  && case t of
+       (ThmResult (Unknown _ UnknownTimeOut)) -> False
+       _ -> True
+
+iResult :: (ThmResult, ThmResult) -> Either () ()
+iResult (a,b) = if trueThm a && trueThm b
+                   then Right ()
+                   else Left ()
+
 checkWith
   :: (Grant g, Avs w, Avs r)
   => (g, GUpd g)

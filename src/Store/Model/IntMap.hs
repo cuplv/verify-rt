@@ -159,8 +159,8 @@ witness = (undefined, undefined)
 intMapLift 
   :: (Avs a, Avs w, Avs r, Avs x)
   => Fun a Key
-  -> Transact2 a I.IntG w r
-  -> Transact2 a (G1 x) w r
+  -> Transact a I.IntG w r
+  -> Transact a (G1 x) w r
 intMapLift k t ctx a =
   requireE (lookupE k (stateE ctx)) $ \v ->
   tup2' (deconE v) $ \n _ ->

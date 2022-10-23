@@ -12,26 +12,16 @@ import Data.SBV
 import Data.SBV.Tuple
 import qualified Data.SBV.Maybe as SM
 
-type Transact g w u b = Fun (Context g, w) (Maybe (u,b))
-
-type Transact' g a b = Transact g a (GUpd g) b
-
-type Transact2 a g w r
+type Transact a g w r
   = Fun a (Context g) -> Fun a w -> Fun a (Maybe (GUpd g, r))
 
--- withInput
---   :: (Avs a, Avs b, Avs c, Grant g1, Grant g2)
---   => Fun (Context g1, a) b
---   -> Transact2 a g w r
---   -> Transact' a g w r
--- withInput a t =
---   tup2 $ \ctx _ ->
---   eform2 t ctx a
+type TransactComp g w r
+  = Transact (Context g, w) g w r
 
 tup2l1
   :: (Avs a, Avs w, Avs r, Grant g1, Grant g2)
-  => Transact2 a g1 w r
-  -> Transact2 a (g1,g2) w r
+  => Transact a g1 w r
+  -> Transact a (g1,g2) w r
 tup2l1 t ctx a =
   tup2' (tup2Ctx ctx) $ \ctx1 _ ->
   requireE (t ctx1 a) $ \r ->
@@ -40,8 +30,8 @@ tup2l1 t ctx a =
 
 tup2l2
   :: (Avs a, Avs w, Avs r, Grant g1, Grant g2)
-  => Transact2 a g2 w r
-  -> Transact2 a (g1,g2) w r
+  => Transact a g2 w r
+  -> Transact a (g1,g2) w r
 tup2l2 t ctx a =
   tup2' (tup2Ctx ctx) $ \_ ctx2 ->
   requireE (t ctx2 a) $ \r ->
@@ -51,9 +41,9 @@ tup2l2 t ctx a =
 seqT
   :: (Avs x, Avs a, Avs b, Avs c, Grant g)
   => GUpd g
-  -> Transact2 x g a b
-  -> Transact2 x g b c
-  -> Transact2 x g a c
+  -> Transact x g a b
+  -> Transact x g b c
+  -> Transact x g a c
 seqT w t1 t2 ctx a =
   requireE (t1 ctx a) $ \r1 ->
   tup2' r1 $ \u1 b ->
@@ -62,10 +52,10 @@ seqT w t1 t2 ctx a =
   returnE (seqE w u1 u2 &&& c)
 
 transactS
-  :: (GState g ~ UState u, Grant g, Update u, Avs w, Avs b)
-  => u 
-  -> Transact g w u b
-  -> Sy w
+  :: (Grant g, Avs a, Avs b)
+  => GUpd g
+  -> Fun (Context g, a) (Maybe (GUpd g, b))
+  -> Sy a
   -> TransactS g
 transactS z f w ctx pre = do
   mu <- symbolize f (tuple (ctx, w))
@@ -73,33 +63,11 @@ transactS z f w ctx pre = do
   let u = _1 (SM.fromJust mu)
   symU z u pre
 
-check
-  :: (GState g ~ UState u, Grant g, Update u, Avs w, Avs b)
-  => (g,u)
-  -> Symbolic () -- domain-specific axioms
-  -> Transact g w u b
-  -> Spec g
-  -> IO (ThmResult, ThmResult)
-check (gw,uw) ax f p = do
-  r1 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
-    ax
-    conf <- forall "config"
-    let t = transactS uw f conf
-    tsSpec gw t p
-  r2 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
-    ax
-    conf <- forall "config"
-    let t = transactS uw f conf
-    tsWrite gw t p
-  return (r1,r2)
-
 check2
   :: (Grant g, Avs w, Avs r)
   => (g, GUpd g)
   -> Symbolic () -- domain-specific axioms
-  -> Transact2 (Context g,w) g w r
+  -> TransactComp g w r
   -> Spec g
   -> IO (ThmResult, ThmResult)
 check2 (gw,uw) ax f p = do

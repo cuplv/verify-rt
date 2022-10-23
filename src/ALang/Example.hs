@@ -88,7 +88,7 @@ type TpccG = (IntG,MapG')
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole
 -- transaction returns Nothing.
-newOrder :: (Avs a) => Transact2 a TpccG Int ()
+newOrder :: (Avs a) => Transact a TpccG Int ()
 newOrder = seqT
   (snd intWitness, snd mapWitness)
   (tup2l1 takeStock)
@@ -98,7 +98,7 @@ newOrder = seqT
 --   (tup2l1 takeStock') -- subtracts, outputs the subtracted amount
 --   (tup2l2 addRecord) -- records the subtracted amount
 
-takeStock' :: (Avs a) => Transact2 a StockG (IMap.Key, Int) Int
+takeStock' :: (Avs a) => Transact a StockG (IMap.Key, Int) Int
 takeStock' ctx cfg =
   tup2' cfg $ \key amt ->
   requireE (deconE $ grantE ctx) $ \k1 ->
@@ -106,7 +106,7 @@ takeStock' ctx cfg =
   IMap.intMapLift key takeStock ctx amt
 
 -- Take given amount from the stock field, return the amount subtracted.
-takeStock :: (Avs a) => Transact2 a IntG Int Int
+takeStock :: (Avs a) => Transact a IntG Int Int
 takeStock ctx amt =
   -- Check that input 'amt' is a natural number
   assertA (amt $>= ca 0) $
@@ -119,7 +119,7 @@ takeStock ctx amt =
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
-addRecord :: (Avs a) => Transact2 a MapG' Int ()
+addRecord :: (Avs a) => Transact a MapG' Int ()
 addRecord ctx amt =
   -- Extract the key from the grant.  When the grant holds a key, it
   -- means we have the exclusive permission to insert/modify/delete on
@@ -142,7 +142,7 @@ addRecord ctx amt =
           "Order for " ++ show n ++ " units."
 
 -- Update the delivery info for an order record.
-deliverRecord :: (Avs a) => Transact2 a MapG' String ()
+deliverRecord :: (Avs a) => Transact a MapG' String ()
 deliverRecord ctx deliv =
   -- Require an exclusive key.
   requireE (deconE $ grantE ctx) $ \key ->
@@ -164,7 +164,7 @@ deliverRecord ctx deliv =
 -- fails both the application property "store stays >= 0" and the
 -- coordination property "transaction updates do not exceed
 -- capabilities."
-takeStockUnsafe :: (Avs a) => Transact2 a IntG Int Int
+takeStockUnsafe :: (Avs a) => Transact a IntG Int Int
 takeStockUnsafe ctx amt =
   assertA (amt $>= ca 0) $
   assertA (ctx `atLeast` amt) $
@@ -183,8 +183,8 @@ type MapU' = MMap.Upd String String
 
 -- Uses key given by user, with no guarantee that it has not been used
 -- in the map already.
-addRecordBad :: Transact' MapG' Int ()
-addRecordBad = tup2 $ \ctx cfg ->
+addRecordBad :: (Avs a) => Transact a MapG' Int ()
+addRecordBad ctx cfg =
   ((stateE ctx &&& cfg) &&& deconE (grantE ctx)) >>> maybeElim
     -- When key is granted
     (tup2 $ \s key ->

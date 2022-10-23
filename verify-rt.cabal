@@ -27,6 +27,7 @@ library
                     , Symbol.Map
                     , Symbol.MaybeMap
                     , Transact
+                    , Transact.Int
                     , Verify
 
     -- Modules included in this library but not exported.

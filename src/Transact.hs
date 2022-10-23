@@ -70,10 +70,34 @@ trueThm t =
        (ThmResult (Unknown _ UnknownTimeOut)) -> False
        _ -> True
 
-iResult :: (ThmResult, ThmResult) -> Either () ()
-iResult (a,b) = if trueThm a && trueThm b
-                   then Right ()
-                   else Left ()
+type SBVThmResult = ThmResult
+
+data ThmResult'
+  = ThmSuccess
+  | ModelFail
+  | TimeOutFail
+  deriving (Show,Eq,Ord)
+
+data CheckResult
+  = CheckResult { relyResult :: ThmResult'
+                , guaranteeResult :: ThmResult'
+                }
+  deriving (Show,Eq,Ord)
+
+checkSuccess = CheckResult ThmSuccess ThmSuccess
+
+checkFail = CheckResult ModelFail ModelFail
+
+checkTO = CheckResult TimeOutFail TimeOutFail
+
+iResult :: (ThmResult, ThmResult) -> CheckResult
+iResult (a,b) =
+  let f x = case x of
+          (ThmResult (Unknown _ UnknownTimeOut)) -> TimeOutFail
+          (ThmResult (Satisfiable _ _)) -> ModelFail
+          (ThmResult (Unsatisfiable _ _)) -> ThmSuccess
+          _ -> error $ "Unhandled ThmResult: " ++ show x
+  in CheckResult (f a) (f b)
 
 checkWith
   :: (Grant g, Avs w, Avs r)
@@ -81,7 +105,7 @@ checkWith
   -> Axioms -- domain-specific axioms
   -> TransactComp g w r
   -> Spec g
-  -> IO (ThmResult, ThmResult)
+  -> IO (ThmResult,ThmResult)
 checkWith (gw,uw) ax f p = do
   ss <- loadAxioms ax
   r1 <- proveWith z3 {satTrackUFs = False} $ do
@@ -96,14 +120,14 @@ checkWith (gw,uw) ax f p = do
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsWrite gw t p
-  return (r1,r2)
+  return $ (r1,r2)
 
 check
   :: (Grant g, Avs w, Avs r)
   => (g, GUpd g)
   -> TransactComp g w r
   -> Spec g
-  -> IO (ThmResult, ThmResult)
+  -> IO (ThmResult,ThmResult)
 check (gw,uw) f p = do
   r1 <- proveWith z3 {satTrackUFs = False} $ do
     setTimeOut 2000
@@ -115,7 +139,7 @@ check (gw,uw) f p = do
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsWrite gw t p
-  return (r1,r2)
+  return $ (r1,r2)
 
 cancelE :: (Avs a, Avs b) => ALang t a (Maybe b)
 cancelE = nothingE

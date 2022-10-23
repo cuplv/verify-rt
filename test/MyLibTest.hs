@@ -16,7 +16,10 @@ tests = testGroup "Tests"
 
 intTests = testGroup "Int"
   [testCase "Good takeStock" $
-     (iResult <$> check witness takeStock nonN) @?= Right ()
+     checkTest (check witness takeStock nonNegative) checkSuccess
   ,testCase "Bad takeStock" $
-     (iResult <$> check witness badTakeStock nonN) @?= Left ()
+     checkTest (check witness badTakeStock nonNegative) checkFail
   ]
+
+checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()
+checkTest c r = c >>= (\r' -> iResult r' @?= r)

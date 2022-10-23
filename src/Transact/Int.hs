@@ -7,8 +7,8 @@ import Transact
 import Data.SBV
 
 -- Int never goes negative
-nonN :: Sy Int -> Sy Int -> Symbolic SBool
-nonN s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
+nonNegative :: Sy Int -> Sy Int -> Symbolic SBool
+nonNegative s1 s2 = return $ (s1 .>= 0) .=> (s2 .>= 0)
 
 -- Take given amount from the stock field, return the amount subtracted.
 takeStock :: (Avs a) => Transact a IntG Int Int
@@ -34,4 +34,4 @@ badTakeStock ctx amt =
   justE (subU (amt $+ ca 1) &&& amt)
 
 witness :: (IntG,IntUpd)
-witness = undefined
+witness = (undefined,undefined)

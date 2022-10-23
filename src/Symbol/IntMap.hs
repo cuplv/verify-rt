@@ -45,6 +45,9 @@ hasVal = uninterpret $ fname "hasVal"
 match :: SBV K -> SBV M -> SBV M -> SBool
 match = uninterpret $ fname "match"
 
+offset :: SBV F -> SBV K -> SBV M -> SBV M -> SBool
+offset = uninterpret $ fname "offset"
+
 valUpdate :: SBV F -> SBV V -> SBV V
 valUpdate = uninterpret $ fname "valUpdate"
 
@@ -78,6 +81,7 @@ addAxioms' ss = do
     member k m
     .|| hasVal k v m
     .|| empty .== singleton k v
+    .|| offset 1 k m m
     .|| match k m m
     .|| valUpdate f v .== v
     .|| modify k f .== identity

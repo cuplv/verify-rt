@@ -155,16 +155,3 @@ lookupE = eform2 $ ArrF
 
 witness :: (G1 a, Upd a)
 witness = (undefined, undefined)
-
-intMapLift 
-  :: (Avs a, Avs w, Avs r, Avs x)
-  => Fun a Key
-  -> Transact a I.IntG w r
-  -> Transact a (G1 x) w r
-intMapLift k t ctx a =
-  requireE (lookupE k (stateE ctx)) $ \v ->
-  tup2' (deconE v) $ \n _ ->
-  letb (conE (n &&& I.mkUniG)) $ \ctx' ->
-  requireE (t ctx' a) $ \r ->
-  tup2' r $ \u b ->
-  returnE (modify k u &&& b)

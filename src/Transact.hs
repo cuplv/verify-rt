@@ -18,6 +18,8 @@ type Transact a g w r
 type TransactComp g w r
   = Transact (Context g, w) g w r
 
+timeout = 1000
+
 tup2l1
   :: (Avs a, Avs w, Avs r, Grant g1, Grant g2)
   => Transact a g1 w r
@@ -109,13 +111,13 @@ checkWith
 checkWith (gw,uw) ax f p = do
   ss <- loadAxioms ax
   r1 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
+    setTimeOut timeout
     applyAxioms ax ss
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsSpec gw t p
   r2 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
+    setTimeOut timeout
     applyAxioms ax ss
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
@@ -130,12 +132,12 @@ check
   -> IO (ThmResult,ThmResult)
 check (gw,uw) f p = do
   r1 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
+    setTimeOut timeout
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsSpec gw t p
   r2 <- proveWith z3 {satTrackUFs = False} $ do
-    setTimeOut 2000
+    setTimeOut timeout
     conf <- forall "config"
     let t = transactS uw (f tup2g1 tup2g2) conf
     tsWrite gw t p

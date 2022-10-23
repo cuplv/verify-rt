@@ -2,7 +2,7 @@ let lib = ./lib.dhall in
 
 \(i : lib.MapInst) ->
 
-let mkfun = \(name : Text) -> "${name}XZ${i.map}"
+let mkfun = lib.mkfun i
 
 let empty = mkfun "empty"
 let singleton = mkfun "singleton"
@@ -125,25 +125,25 @@ in ''
 ''
 )
 
--- Insert causes distinction
-++ ''
-(assert (forall (${qk1} ${qv1} ${qm1})
-  (=>
-    (not (${hasVal} k1 v1 m1))
-    (distinct m1 (${update} (${insert} k1 v1) m1)))))
-''
+-- -- Insert causes distinction
+-- ++ ''
+-- (assert (forall (${qk1} ${qv1} ${qm1})
+--   (=>
+--     (not (${hasVal} k1 v1 m1))
+--     (distinct m1 (${update} (${insert} k1 v1) m1)))))
+-- ''
 
--- Define modify update
-++ (
-let m2 = "(${update} (${modify} k1 f1) m1)"
-let v2 = "(${valUpdate} f1 v1)"
-in ''
-(assert (forall (${qf1} ${qk1} ${qv1} ${qm1})
-  (and
-    (= (${hasVal} k1 v1 m1) (${hasVal} k1 ${v2} ${m2}))
-    (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
-''
-)
+-- -- Define modify update
+-- ++ (
+-- let m2 = "(${update} (${modify} k1 f1) m1)"
+-- let v2 = "(${valUpdate} f1 v1)"
+-- in ''
+-- (assert (forall (${qf1} ${qk1} ${qv1} ${qm1})
+--   (and
+--     (=> (${hasVal} k1 v1 m1) (${hasVal} k1 ${v2} ${m2}))
+--     (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
+-- ''
+-- )
 
 -- Define delete update
 ++ (

@@ -17,7 +17,7 @@ tests = testGroup "Tests"
   [ intTests
   , maybeMapTests
   , intMapTests
-  , tpccTests
+  -- , tpccTests
   ]
 
 intTests = testGroup "Int"
@@ -55,42 +55,42 @@ intMapTests = testGroup "IntMap"
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.takeStock IMap.nonNegative)
        checkSuccess
-  ,testCase "IntMap takeStock1" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 1)
-       checkSuccess
-  ,testCase "IntMap takeStock2" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 2)
-       checkSuccess
-  ,testCase "IntMap takeStock3" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 3)
-       checkSuccess
-  ,testCase "IntMap takeStock4" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 4)
-       checkSuccess
-  ,testCase "IntMap takeStock5" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 5)
-       checkSuccess
-  ,testCase "IntMap takeStock6" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 6)
-       checkSuccess
-  ,testCase "IntMap takeStock7" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 7)
-       checkSuccess
-  ,testCase "IntMap takeStock8" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 8)
-       checkSuccess
-  ,testCase "IntMap takeZeroStock" $
-     checkTest
-       (checkWith IMap.witness IMap.axioms IMap.takeZeroStock IMap.nonNegative)
-       checkSuccess
+  -- ,testCase "IntMap takeStock1" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 1)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock2" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 2)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock3" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 3)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock4" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 4)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock5" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 5)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock6" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 6)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock7" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 7)
+  --      checkSuccess
+  -- ,testCase "IntMap takeStock8" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeStock $ IMap.nonNegative' 8)
+  --      checkSuccess
+  -- ,testCase "IntMap takeZeroStock" $
+  --    checkTest
+  --      (checkWith IMap.witness IMap.axioms IMap.takeZeroStock IMap.nonNegative)
+  --      checkSuccess
   ]
 
 tpccTests = testGroup "TPC-C"

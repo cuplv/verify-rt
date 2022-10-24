@@ -81,11 +81,12 @@ instance Avs (Upd a b) where
 instance Update (Upd a b) where
   type UState (Upd a b) = Map a b
   mkIdU = arrC SMap.identity (Upd Map.empty)
-  seqU _ = ArrF
-    (\a -> pure $ SMap.seq (_1 a) (_2 a))
-    undefined
-  applyU _ = ArrF
-    (\a -> pure $ SMap.update (_1 a) (_2 a))
+  seqU = undefined
+  -- seqU _ = ArrF
+  --   (\a -> pure $ SMap.seq (_1 a) (_2 a))
+  --   undefined
+  applyU _ = ArrP
+    (\a b -> pure $ SMap.update (_1 a) (_2 a) b)
     undefined
 
 insert' :: (Avs a, Avs b) => ALang t (Key, Val a b) (Upd a b)

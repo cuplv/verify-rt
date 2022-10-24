@@ -31,34 +31,51 @@ let qf2 = "(f2 ${i.valUpd})"
 
 let baseAxioms =
 
--- Define empty map, as no members
+-- All types are inhabited
 ''
+(assert (exists (${qk1}) true))
+(assert (exists (${qv1}) true))
+(assert (exists (${qm1}) true))
+(assert (exists (${qu1}) true))
+(assert (exists (${qf1}) true))
+''
+
+-- Define empty map, as no members
+++ ''
 (assert (forall (${qk1}) (not (${member} k1 ${empty}))))
 ''
 
--- Define singleton map
-++ (
-let m = "(${singleton} k1 v1)"
-in ''
-(assert (forall (${qk1} ${qv1})
-  (and
-    (${hasVal} k1 v1 ${m})
-    (${member} k1 ${m}))))
+-- -- Define singleton map
+-- ++ (
+-- let m = "(${singleton} k1 v1)"
+-- in ''
+-- (assert (forall (${qk1} ${qv1})
+--   (and
+--     (${hasVal} k1 v1 ${m})
+--     (${member} k1 ${m}))))
 
-(assert (forall (${qk1} ${qk2} ${qv1})
-  (=>
-    (distinct k1 k2)
-    (not (${member} k2 ${m})))))
-'')
+-- (assert (forall (${qk1} ${qk2} ${qv1})
+--   (=>
+--     (distinct k1 k2)
+--     (not (${member} k2 ${m})))))
+-- '')
 
--- Define match 
-++ ''
-(assert (forall (${qk1} ${qm1} ${qm2})
-  (= (${match} k1 m1 m2)
-    (and
-      (forall (${qv1}) (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))
-      (= (${member} k1 m1) (${member} k1 m2))))))
-''
+-- -- Define match 
+-- ++ ''
+-- (assert (forall (${qk1} ${qm1} ${qm2})
+--   (= (${match} k1 m1 m2)
+--     (and
+--       (forall (${qv1}) (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))
+--       (= (${member} k1 m1) (${member} k1 m2))))))
+-- ''
+
+-- -- There are at least 2 values
+-- ++ ''
+-- (assert (forall (${qk1} ${qm1})
+--   (exists (${qv1})
+--     (not (${hasVal} k1 v1 m1)))))
+-- (assert (not (forall (${qk1} ${qv1} ${qm1}) (${hasVal} k1 v1 m1))))
+-- ''
 
 -- Equivalence from matching on all keys
 ++ ''
@@ -93,13 +110,13 @@ in ''
   (=> (${hasVal} k1 v1 m1) (${member} k1 m1))))
 ''
 
--- member implies exists hasVal
-++ ''
-(assert (forall (${qk1} ${qm1})
-  (=>
-    (${member} k1 m1)
-    (exists (${qv1}) (${hasVal} k1 v1 m1)))))
-''
+-- -- member implies exists hasVal
+-- ++ ''
+-- (assert (forall (${qk1} ${qm1})
+--   (=>
+--     (${member} k1 m1)
+--     (exists (${qv1}) (${hasVal} k1 v1 m1)))))
+-- ''
 
 -- hasVal is unique
 ++ ''
@@ -111,66 +128,40 @@ in ''
 
 -- Define identity update
 ++ ''
-(assert (forall (${qm1}) (= (${update} ${identity} m1) m1)))
+(assert (forall (${qm1} ${qm2})
+  (=
+    (${update} ${identity} m1 m2)
+    (= m1 m2))))
 ''
 
 -- Define insert update
-++ (
-let m2 = "(${update} (${insert} k1 v1) m1)"
-in ''
-(assert (forall (${qk1} ${qv1} ${qm1})
-  (and
-    (${hasVal} k1 v1 ${m2})
-    (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
+++ ''
+(assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+  (=
+    (${update} (${insert} k1 v1) m1 m2)
+    (and
+      (${hasVal} k1 v1 m2)
+      (forall (${qk2})
+        (or (= k1 k2) (${match} k2 m1 m2)))))))
 ''
-)
-
--- -- Insert causes distinction
--- ++ ''
--- (assert (forall (${qk1} ${qv1} ${qm1})
---   (=>
---     (not (${hasVal} k1 v1 m1))
---     (distinct m1 (${update} (${insert} k1 v1) m1)))))
--- ''
-
--- -- Define modify update
--- ++ (
--- let m2 = "(${update} (${modify} k1 f1) m1)"
--- let v2 = "(${valUpdate} f1 v1)"
--- in ''
--- (assert (forall (${qf1} ${qk1} ${qv1} ${qm1})
---   (and
---     (=> (${hasVal} k1 v1 m1) (${hasVal} k1 ${v2} ${m2}))
---     (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
--- ''
--- )
 
 -- Define delete update
-++ (
-let m2 = "(${update} (${delete} k1) m1)"
-in ''
-(assert (forall (${qk1} ${qm1})
-  (and
-    (not (${member} k1 ${m2}))
-    (forall (${qk2}) (=> (distinct k1 k2) (${match} k2 m1 ${m2}))))))
+++ ''
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (=
+    (${update} (${delete} k1) m1 m2)
+    (and
+      (not (${member} k1 m2))
+      (forall (${qk2})
+        (or (= k1 k2) (${match} k2 m1 m2)))))))
 ''
-)
-
--- Define seq update
-++ (
-let m2 = "(${update} u1 m1)"
-let m3a = "(${update} u2 ${m2})"
-let m3b = "(${update} (${seq} u1 u2) m1)"
-in ''
-(assert (forall (${qu1} ${qu2} ${qm1}) (= ${m3a} ${m3b})))
-''
-)
 
 -- identity and seq
 ++ ''
 (assert (forall (${qu1})
-  (and (= u1 (${seq} ${identity} u1))
-       (= u1 (${seq} u1 ${identity})))))
+  (and
+    (${seq} ${identity} u1 u1)
+    (${seq} u1 ${identity} u1))))
 ''
 
 in { baseAxioms }

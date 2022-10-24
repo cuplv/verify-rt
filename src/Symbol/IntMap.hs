@@ -48,10 +48,7 @@ match = uninterpret $ fname "match"
 offset :: SBV F -> SBV K -> SBV M -> SBV M -> SBool
 offset = uninterpret $ fname "offset"
 
-valUpdate :: SBV F -> SBV V -> SBV V
-valUpdate = uninterpret $ fname "valUpdate"
-
-update :: SBV U -> SBV M -> SBV M
+update :: SBV U -> SBV M -> SBV M -> SBool
 update = uninterpret $ fname "update"
 
 identity :: SBV U
@@ -66,7 +63,7 @@ modify = uninterpret $ fname "modify"
 delete :: SBV K -> SBV U
 delete = uninterpret $ fname "delete"
 
-seq :: SBV U -> SBV U -> SBV U
+seq :: SBV U -> SBV U -> SBV U -> SBool
 seq = uninterpret $ fname "seq"
 
 addAxioms' :: [String] -> Symbolic ()
@@ -83,11 +80,10 @@ addAxioms' ss = do
     .|| empty .== singleton k v
     .|| offset 1 k m m
     .|| match k m m
-    .|| valUpdate f v .== v
     .|| modify k f .== identity
-    .|| update u m .== m
+    .|| update u m m .== sTrue
     .|| insert k v .== delete k
-    .|| seq identity identity .== identity
+    .|| seq identity identity identity .== sTrue
     .|| empty .== empty
     .|| sJust u .== sJust identity
 

@@ -56,7 +56,7 @@ match = uninterpret $ fname "match"
 valUpdate :: SBV F -> SBV V -> SBV V
 valUpdate = uninterpret $ fname "valUpdate"
 
-update :: SBV U -> SBV M -> SBV M
+update :: SBV U -> SBV M -> SBV M -> SBool
 update = uninterpret $ fname "update"
 
 identity :: SBV U
@@ -71,29 +71,30 @@ modify = uninterpret $ fname "modify"
 delete :: SBV K -> SBV U
 delete = uninterpret $ fname "delete"
 
-seq :: SBV U -> SBV U -> SBV U
+seq :: SBV U -> SBV U -> SBV U -> SBool
 seq = uninterpret $ fname "seq"
 
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "MaybeMapAxioms" ss
+  -- registerUISMTFunction member
   k <- forall_
   v <- forall_
   m <- forall_
   u <- forall_
   f <- forall_
   constrain $
-    member k m
-    .|| hasVal k v m
-    .|| empty .== singleton k v
-    .|| match k m m
-    .|| valUpdate f v .== v
-    .|| modify k f .== identity
-    .|| update u m .== m
-    .|| insert k v .== delete k
-    .|| seq identity identity .== identity
+    member k m .== member k m
+    .|| hasVal k v m .== hasVal k v m
     .|| empty .== empty
-    .|| sJust u .== sJust identity
+    .|| singleton k v .== singleton k v
+    .|| match k m m .== match k m m
+    .|| modify k f .== modify k f
+    .|| update u m m .== update u m m
+    .|| insert k v .== insert k v
+    .|| delete k .== delete k
+    .|| seq identity identity identity .== seq identity identity identity
+    .|| sJust u .== sJust u
 
 axioms :: Axioms
 axioms = mkAxiomLoader "MaybeMap" addAxioms'
@@ -137,3 +138,13 @@ hasEmptyEntry :: SBV K -> SBV M -> Symbolic SBool
 hasEmptyEntry k s = do
   v <- lookup k s
   return (isJust v .&& isNothing (fromJust v))
+
+test3 :: IO ThmResult
+test3 = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms axioms ss
+    k <- forall_
+    v <- forall_
+    m <- forall_
+    return $ hasVal k v m

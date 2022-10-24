@@ -34,6 +34,29 @@ in
 --   (= (${valUpdate} f1 v1) (+ f1 v1))))
 -- ''
 
+-- -- Define modify
+-- ++ ''
+-- (assert (forall (${qf1} ${qk1} ${qv1} ${qv2} ${qm1} ${qm2})
+--   (=>
+--     (and
+--       (${update} (${modify} f1 k1) m1 m2)
+--       (${hasVal} k1 v1 m1)
+--       (${hasVal} k1 v2 m2))
+--     (= (+ f1 v1) v2))))
+
+-- (assert (forall (${qf1} ${qk1} ${qm1} ${qm2})
+--   (=>
+--     (${update} (${modify} f1 k1) m1 m2)
+--     (=
+--       (not (${member} k1 m1))
+--       (not (${member} k1 m2))))))
+
+-- (assert (forall (${qf1} ${qk1} ${qk2} ${qm1} ${qm2})
+--   (=>
+--     (and (distinct k1 k2) (${update} (${modify} f1 k1) m1 m2))
+--     (${match} k2 m1 m2))))
+-- ''
+
 -- -- Define valUpdate again?
 -- ++ (
 -- let u = "(${modify} k1 f1)"
@@ -54,40 +77,69 @@ in
 -- ''
 -- )
 
--- Define offset
+-- Offset v2
 ++ ''
-(assert (forall (${qf1} ${qk1} ${qm1} ${qm2})
-  (=
+(assert (forall (${qf1} ${qk1} ${qv1} ${qv2} ${qm1} ${qm2})
+  (=>
     (${offset} f1 k1 m1 m2)
     (and
       (${member} k1 m1)
       (${member} k1 m2)
-      (forall (${qv1})
-        (=
-          (${hasVal} k1 v1 m1)
-          (${hasVal} k1 (+ f1 v1) m2)))))))
-''
-
--- offset 0 is reflexive
-++ ''
-(assert (forall (${qk1} ${qm1})
-  (${offset} 0 k1 m1 m1)))
+      (=>
+        (and (${hasVal} k1 v1 m1) (${hasVal} k1 v2 m2))
+        (= (+ f1 v1) v2))))))
 ''
 
 -- Define modify via offset
-++ (
-let u = "(${modify} k1 f1)"
-let m2 = "(${update} ${u} m1)"
-in ''
-(assert (forall (${qf1} ${qk1} ${qm1})
-  (and
+++ ''
+(assert (forall (${qf1} ${qk1} ${qm1} ${qm2})
+  (=>
+    (${update} (${modify} f1 k1) m1 m2)
     (or
-      (${offset} f1 k1 m1 ${m2})
-      (and (not (${member} k1 m1)) (not (${member} k1 ${m2}))))
-    (forall (${qk2})
-      (=>
-        (distinct k1 k2)
-        (${match} k2 m1 ${m2})))
-    )))
+      (and (not (${member} k1 m1)) (not (${member} k1 m2)))
+      (${offset} f1 k1 m1 m2)))))
+
+(assert (forall (${qf1} ${qk1} ${qk2} ${qm1} ${qm2})
+  (=>
+    (and (distinct k1 k2) (${update} (${modify} f1 k1) m1 m2))
+    (${match} k2 m1 m2))))
 ''
-)
+
+
+-- -- Define offset
+-- ++ ''
+-- (assert (forall (${qf1} ${qk1} ${qm1} ${qm2})
+--   (=
+--     (${offset} f1 k1 m1 m2)
+--     (and
+--       (${member} k1 m1)
+--       (${member} k1 m2)
+--       (forall (${qv1})
+--         (=
+--           (${hasVal} k1 v1 m1)
+--           (${hasVal} k1 (+ f1 v1) m2)))))))
+-- ''
+
+-- -- offset 0 is reflexive
+-- ++ ''
+-- (assert (forall (${qk1} ${qm1})
+--   (${offset} 0 k1 m1 m1)))
+-- ''
+
+-- -- Define modify via offset
+-- ++ (
+-- let u = "(${modify} k1 f1)"
+-- let m2 = "(${update} ${u} m1)"
+-- in ''
+-- (assert (forall (${qf1} ${qk1} ${qm1})
+--   (and
+--     (or
+--       (${offset} f1 k1 m1 ${m2})
+--       (and (not (${member} k1 m1)) (not (${member} k1 ${m2}))))
+--     (forall (${qk2})
+--       (=>
+--         (distinct k1 k2)
+--         (${match} k2 m1 ${m2})))
+--     )))
+-- ''
+-- )

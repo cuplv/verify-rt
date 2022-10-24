@@ -39,11 +39,11 @@ maybeMapTests = testGroup "MaybeMap"
   ,testCase "addRecordBad ordered" $
     checkTest
       (checkWith MMap.witness MMap.axioms MMap.addRecordBad MMap.orderedEntries)
-      checkTO
+      checkFail
   ,testCase "deliverRecord forever" $
     checkTest
       (checkWith MMap.witness MMap.axioms MMap.deliverRecord MMap.foreverEntries)
-      (CheckResult TimeOutFail ThmSuccess)
+      (CheckResult ModelFail ThmSuccess)
   ,testCase "deliverRecord ordered" $
     checkTest
       (checkWith MMap.witness MMap.axioms MMap.deliverRecord MMap.orderedEntries)

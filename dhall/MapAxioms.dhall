@@ -31,22 +31,33 @@ let qf2 = "(f2 ${i.valUpd})"
 
 let baseAxioms =
 
--- All types are inhabited
-''
-(assert (exists (${qk1}) true))
-(assert (exists (${qv1}) true))
-(assert (exists (${qm1}) true))
-(assert (exists (${qu1}) true))
-(assert (exists (${qf1}) true))
-''
+-- -- All types are inhabited
+-- ''
+-- (assert (exists (${qk1}) true))
+-- (assert (exists (${qv1}) true))
+-- (assert (exists (${qm1}) true))
+-- (assert (exists (${qu1}) true))
+-- (assert (exists (${qf1}) true))
+-- ''
 
 -- Define empty map, as no members
+''
+(assert (forall (${qk1} ${qm1})
+  (=>
+    (${empty} m1)
+    (not (${member} k1 m1)))))
+''
+
+-- All empty maps are equivalent
 ++ ''
-(assert (forall (${qk1}) (not (${member} k1 ${empty}))))
+(assert (forall (${qm1} ${qm2})
+  (=>
+    (and (${empty} m1) (${empty} m2))
+    (= m1 m2))))
 ''
 
 -- -- Define singleton map
--- ++ (
+-- (
 -- let m = "(${singleton} k1 v1)"
 -- in ''
 -- (assert (forall (${qk1} ${qv1})
@@ -60,14 +71,33 @@ let baseAxioms =
 --     (not (${member} k2 ${m})))))
 -- '')
 
--- -- Define match 
--- ++ ''
--- (assert (forall (${qk1} ${qm1} ${qm2})
---   (= (${match} k1 m1 m2)
---     (and
---       (forall (${qv1}) (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))
---       (= (${member} k1 m1) (${member} k1 m2))))))
--- ''
+-- Singleton v2
+++ ''
+(assert (forall (${qk1} ${qv1} ${qm1})
+  (=>
+    (${singleton} k1 v1 m1)
+    (${hasVal} k1 v1 m1))))
+
+(assert (forall (${qk1} ${qk2} ${qv1} ${qm1})
+  (=>
+    (and (distinct k1 k2) (${singleton} k1 v1 m1))
+    (not (${member} k2 m1)))))
+
+(assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+  (=>
+    (and (${singleton} k1 v1 m1) (${singleton} k1 v1 m2))
+    (= m1 m2))))
+''
+
+-- Define match
+-- (This one looks dicey, might want to split into simpler statements)
+++ ''
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (= (${match} k1 m1 m2)
+    (and
+      (forall (${qv1}) (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))
+      (= (${member} k1 m1) (${member} k1 m2))))))
+''
 
 -- -- There are at least 2 values
 -- ++ ''
@@ -110,13 +140,13 @@ let baseAxioms =
   (=> (${hasVal} k1 v1 m1) (${member} k1 m1))))
 ''
 
--- -- member implies exists hasVal
--- ++ ''
--- (assert (forall (${qk1} ${qm1})
---   (=>
---     (${member} k1 m1)
---     (exists (${qv1}) (${hasVal} k1 v1 m1)))))
--- ''
+-- member implies exists hasVal
+++ ''
+(assert (forall (${qk1} ${qm1})
+  (=>
+    (${member} k1 m1)
+    (exists (${qv1}) (${hasVal} k1 v1 m1)))))
+''
 
 -- hasVal is unique
 ++ ''
@@ -134,26 +164,55 @@ let baseAxioms =
     (= m1 m2))))
 ''
 
--- Define insert update
+-- -- Define insert update
+-- ++ ''
+-- (assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+--   (=
+--     (${update} (${insert} k1 v1) m1 m2)
+--     (and
+--       (${hasVal} k1 v1 m2)
+--       (forall (${qk2})
+--         (or (= k1 k2) (${match} k2 m1 m2)))))))
+-- ''
+
+-- Insert v2
 ++ ''
 (assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
-  (=
+  (=>
     (${update} (${insert} k1 v1) m1 m2)
-    (and
-      (${hasVal} k1 v1 m2)
-      (forall (${qk2})
-        (or (= k1 k2) (${match} k2 m1 m2)))))))
+    (${hasVal} k1 v1 m2))))
+
+(assert (forall (${qk1} ${qk2} ${qv1} ${qm1} ${qm2})
+  (=>
+    (and (distinct k1 k2) (${update} (${insert} k1 v1) m1 m2))
+    (${match} k2 m1 m2))))
 ''
 
--- Define delete update
+-- -- Define delete update
+-- ++ ''
+-- (assert (forall (${qk1} ${qm1} ${qm2})
+--   (=
+--     (${update} (${delete} k1) m1 m2)
+--     (and
+--       (not (${member} k1 m2))
+--       (forall (${qk2})
+--         (or (= k1 k2) (${match} k2 m1 m2)))))))
+-- (assert (forall (${qk1} ${qm1})
+--   (=
+--     (${update} (${delete} k1) m1 m1)
+--     (not (${member} k1 m1)))))
+-- ''
+
+-- Delete v2
 ++ ''
 (assert (forall (${qk1} ${qm1} ${qm2})
-  (=
+  (=>
     (${update} (${delete} k1) m1 m2)
-    (and
-      (not (${member} k1 m2))
-      (forall (${qk2})
-        (or (= k1 k2) (${match} k2 m1 m2)))))))
+    (not (${member} k1 m2)))))
+(assert (forall (${qk1} ${qk2} ${qm1} ${qm2})
+  (=>
+    (and (distinct k1 k2) (${update} (${delete} k1) m1 m2))
+    (${match} k2 m1 m2))))
 ''
 
 -- identity and seq

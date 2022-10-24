@@ -30,10 +30,10 @@ type V = Integer
 type U = IntMapUpd
 type F = Integer
 
-empty :: SBV M
+empty :: SBV M -> SBool
 empty = uninterpret $ fname "empty"
 
-singleton :: SBV K -> SBV V -> SBV M
+singleton :: SBV K -> SBV V -> SBV M -> SBool
 singleton = uninterpret $ fname "singleton"
 
 member :: SBV K -> SBV M -> SBool
@@ -44,9 +44,6 @@ hasVal = uninterpret $ fname "hasVal"
 
 match :: SBV K -> SBV M -> SBV M -> SBool
 match = uninterpret $ fname "match"
-
-offset :: SBV F -> SBV K -> SBV M -> SBV M -> SBool
-offset = uninterpret $ fname "offset"
 
 update :: SBV U -> SBV M -> SBV M -> SBool
 update = uninterpret $ fname "update"
@@ -66,6 +63,9 @@ delete = uninterpret $ fname "delete"
 seq :: SBV U -> SBV U -> SBV U -> SBool
 seq = uninterpret $ fname "seq"
 
+offset :: SBV F -> SBV K -> SBV M -> SBV M -> SBool
+offset = uninterpret $ fname "offset"
+
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "IntMapAxioms" ss
@@ -75,17 +75,32 @@ addAxioms' ss = do
   u <- forall_
   f <- forall_
   constrain $
-    member k m
-    .|| hasVal k v m
-    .|| empty .== singleton k v
-    .|| offset 1 k m m
-    .|| match k m m
-    .|| modify k f .== identity
-    .|| update u m m .== sTrue
-    .|| insert k v .== delete k
-    .|| seq identity identity identity .== sTrue
-    .|| empty .== empty
-    .|| sJust u .== sJust identity
+    member k m .== member k m
+    .|| hasVal k v m .== hasVal k v m
+    .|| empty m .== empty m
+    .|| singleton k v m .== singleton k v m
+    .|| match k m m .== match k m m
+    .|| modify k f .== modify k f
+    .|| update u m m .== update u m m
+    .|| insert k v .== insert k v
+    .|| delete k .== delete k
+    .|| seq identity identity identity .== seq identity identity identity
+    .|| sJust u .== sJust u
+  constrain $
+    offset 1 k m m .== offset 1 k m m
+
+  -- constrain $
+  --   member k m
+  --   .|| hasVal k v m
+  --   .|| empty .== singleton k v
+  --   .|| offset 1 k m m
+  --   .|| match k m m
+  --   .|| modify k f .== identity
+  --   .|| update u m m .== sTrue
+  --   .|| insert k v .== delete k
+  --   .|| seq identity identity identity .== sTrue
+  --   .|| empty .== empty
+  --   .|| sJust u .== sJust identity
 
 axioms :: Axioms
 axioms = mkAxiomLoader "IntMap" addAxioms'
@@ -124,3 +139,19 @@ anyEntry s = do
   v <- forall_
   constrain $ hasVal k v s
   return (k, v)
+
+test3 :: IO ThmResult
+test3 = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms axioms ss
+    k <- forall_
+    v1 <- forall_
+    constrain $ v1 .>= 4
+    v2 <- forall_
+    m1 <- forall_
+    constrain $ hasVal k v1 m1
+    m2 <- forall_
+    constrain $ hasVal k v2 m2
+    constrain $ update (modify k (-3)) m1 m2
+    return $ v2 .>= 4

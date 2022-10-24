@@ -38,10 +38,10 @@ type V = Maybe MaybeMapVal
 type U = MaybeMapUpd
 type F = MaybeMapValUpd
 
-empty :: SBV M
+empty :: SBV M -> SBool
 empty = uninterpret $ fname "empty"
 
-singleton :: SBV K -> SBV V -> SBV M
+singleton :: SBV K -> SBV V -> SBV M -> SBool
 singleton = uninterpret $ fname "singleton"
 
 member :: SBV K -> SBV M -> SBool
@@ -52,9 +52,6 @@ hasVal = uninterpret $ fname "hasVal"
 
 match :: SBV K -> SBV M -> SBV M -> SBool
 match = uninterpret $ fname "match"
-
-valUpdate :: SBV F -> SBV V -> SBV V
-valUpdate = uninterpret $ fname "valUpdate"
 
 update :: SBV U -> SBV M -> SBV M -> SBool
 update = uninterpret $ fname "update"
@@ -74,10 +71,12 @@ delete = uninterpret $ fname "delete"
 seq :: SBV U -> SBV U -> SBV U -> SBool
 seq = uninterpret $ fname "seq"
 
+valUpdate :: SBV F -> SBV V -> SBV V
+valUpdate = uninterpret $ fname "valUpdate"
+
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "MaybeMapAxioms" ss
-  -- registerUISMTFunction member
   k <- forall_
   v <- forall_
   m <- forall_
@@ -86,8 +85,8 @@ addAxioms' ss = do
   constrain $
     member k m .== member k m
     .|| hasVal k v m .== hasVal k v m
-    .|| empty .== empty
-    .|| singleton k v .== singleton k v
+    .|| empty m .== empty m
+    .|| singleton k v m .== singleton k v m
     .|| match k m m .== match k m m
     .|| modify k f .== modify k f
     .|| update u m m .== update u m m
@@ -146,5 +145,6 @@ test3 = do
     applyAxioms axioms ss
     k <- forall_
     v <- forall_
-    m <- forall_
-    return $ hasVal k v m
+    m1 <- forall_
+    m2 <- forall_
+    return $ member k m1 .|| hasVal k v m2 .|| match k m1 m2

@@ -148,3 +148,20 @@ test3 = do
     m1 <- forall_
     m2 <- forall_
     return $ member k m1 .|| hasVal k v m2 .|| match k m1 m2
+
+test4 :: IO ThmResult
+test4 = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    k <- forall "k"
+    u <- forall "u"
+    constrain $ member k m1 .&& member k m2
+    constrain $ update u m1 m2
+    v1 <- forall "v1"
+    constrain $ hasVal k v1 m1
+    v2 <- forall "v2"
+    constrain $ hasVal k v2 m2
+    return $ (v1 .== v2)

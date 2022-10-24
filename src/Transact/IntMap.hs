@@ -23,6 +23,16 @@ takeStock ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
   intMapLift k1 Int.takeStock ctx amt
 
+badTakeStock1 :: (Avs a) => Transact a StockG Int Int
+badTakeStock1 ctx amt =
+  requireE (deconE $ grantE ctx) $ \k1 ->
+  intMapLift k1 Int.badTakeStock ctx amt
+
+badTakeStock2 :: (Avs a) => Transact a StockG Int Int
+badTakeStock2 ctx amt =
+  requireE (deconE $ grantE ctx) $ \_ ->
+  intMapLift (ca 8) Int.takeStock ctx amt
+
 nonNegative :: Sy (IMap.Map a) -> Sy (IMap.Map a) -> Symbolic SBool
 nonNegative s1 s2 = do
   (k,v1) <- SIMap.anyEntry s1
@@ -56,3 +66,5 @@ intMapLift k t ctx a =
   requireE (t ctx' a) $ \r ->
   tup2' r $ \u b ->
   returnE (IMap.modify k u &&& b)
+
+test3 = checkWith witness axioms takeStock nonNegative

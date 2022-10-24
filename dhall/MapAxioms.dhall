@@ -31,15 +31,6 @@ let qf2 = "(f2 ${i.valUpd})"
 
 let baseAxioms =
 
--- -- All types are inhabited
--- ''
--- (assert (exists (${qk1}) true))
--- (assert (exists (${qv1}) true))
--- (assert (exists (${qm1}) true))
--- (assert (exists (${qu1}) true))
--- (assert (exists (${qf1}) true))
--- ''
-
 -- Define empty map, as no members
 ''
 (assert (forall (${qk1} ${qm1})
@@ -56,22 +47,7 @@ let baseAxioms =
     (= m1 m2))))
 ''
 
--- -- Define singleton map
--- (
--- let m = "(${singleton} k1 v1)"
--- in ''
--- (assert (forall (${qk1} ${qv1})
---   (and
---     (${hasVal} k1 v1 ${m})
---     (${member} k1 ${m}))))
-
--- (assert (forall (${qk1} ${qk2} ${qv1})
---   (=>
---     (distinct k1 k2)
---     (not (${member} k2 ${m})))))
--- '')
-
--- Singleton v2
+-- Singleton
 ++ ''
 (assert (forall (${qk1} ${qv1} ${qm1})
   (=>
@@ -98,14 +74,6 @@ let baseAxioms =
       (forall (${qv1}) (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))
       (= (${member} k1 m1) (${member} k1 m2))))))
 ''
-
--- -- There are at least 2 values
--- ++ ''
--- (assert (forall (${qk1} ${qm1})
---   (exists (${qv1})
---     (not (${hasVal} k1 v1 m1)))))
--- (assert (not (forall (${qk1} ${qv1} ${qm1}) (${hasVal} k1 v1 m1))))
--- ''
 
 -- Equivalence from matching on all keys
 ++ ''
@@ -164,18 +132,7 @@ let baseAxioms =
     (= m1 m2))))
 ''
 
--- -- Define insert update
--- ++ ''
--- (assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
---   (=
---     (${update} (${insert} k1 v1) m1 m2)
---     (and
---       (${hasVal} k1 v1 m2)
---       (forall (${qk2})
---         (or (= k1 k2) (${match} k2 m1 m2)))))))
--- ''
-
--- Insert v2
+-- Insert
 ++ ''
 (assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
   (=>
@@ -188,22 +145,7 @@ let baseAxioms =
     (${match} k2 m1 m2))))
 ''
 
--- -- Define delete update
--- ++ ''
--- (assert (forall (${qk1} ${qm1} ${qm2})
---   (=
---     (${update} (${delete} k1) m1 m2)
---     (and
---       (not (${member} k1 m2))
---       (forall (${qk2})
---         (or (= k1 k2) (${match} k2 m1 m2)))))))
--- (assert (forall (${qk1} ${qm1})
---   (=
---     (${update} (${delete} k1) m1 m1)
---     (not (${member} k1 m1)))))
--- ''
-
--- Delete v2
+-- Delete
 ++ ''
 (assert (forall (${qk1} ${qm1} ${qm2})
   (=>

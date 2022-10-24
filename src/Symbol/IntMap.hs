@@ -12,6 +12,7 @@ import Prelude hiding (insert,seq,lookup)
 import Data.SBV
 import Data.SBV.Control (registerUISMTFunction)
 import Data.SBV.Maybe
+import qualified Data.SBV.Maybe as SMaybe
 import Data.SBV.Internals (SolverContext)
 
 data IntMap
@@ -63,7 +64,7 @@ delete = uninterpret $ fname "delete"
 seq :: SBV U -> SBV U -> SBV U -> SBool
 seq = uninterpret $ fname "seq"
 
-offset :: SBV F -> SBV K -> SBV M -> SBV M -> SBool
+offset :: SBV K -> SBV F -> SBV M -> SBV M -> SBool
 offset = uninterpret $ fname "offset"
 
 addAxioms' :: [String] -> Symbolic ()
@@ -87,7 +88,7 @@ addAxioms' ss = do
     .|| seq identity identity identity .== seq identity identity identity
     .|| sJust u .== sJust u
   constrain $
-    offset 1 k m m .== offset 1 k m m
+    offset k 1 m m .== offset k 1 m m
 
   -- constrain $
   --   member k m
@@ -123,20 +124,20 @@ test = do
 
 anyMember :: SBV M -> Symbolic (SBV K)
 anyMember s = do
-  k <- forall_
+  k <- forall "k"
   constrain $ member k s
   return k
 
 lookup :: SBV K -> SBV M -> Symbolic (SBV (Maybe V))
 lookup k s = do
-  v <- forall_
+  v <- forall "lookupV"
   constrain $ hasVal k v s
   return $ ite (member k s) (sJust v) sNothing
 
 anyEntry :: SBV M -> Symbolic (SBV K, SBV V)
 anyEntry s = do
   k <- anyMember s
-  v <- forall_
+  v <- forall "entryV"
   constrain $ hasVal k v s
   return (k, v)
 
@@ -145,13 +146,53 @@ test3 = do
   ss <- loadAxioms axioms
   proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
     applyAxioms axioms ss
-    k <- forall_
-    v1 <- forall_
-    constrain $ v1 .>= 4
-    v2 <- forall_
-    m1 <- forall_
+    m1 <- forall "m1"
+    (k,v1) <- anyEntry m1
+    -- mr <- forall_
+    -- constrain $ match k m1 mr
+    m2 <- forall "m2"
+    -- u <- forall "u"
+    -- constrain $
+    --   ite (v1 .>= 3)
+    --       (u .== modify k (-3))
+    --       (u .== identity)
+    -- constrain $ update u m1 m2
+    constrain $ update (modify k 1) m1 m2
+    (k2,v21) <- anyEntry m1
+    -- constrain $ k2 ./= k
+    mv2 <- lookup k2 m2
+    mv2' <- forall_
+    constrain $ mv2 .== mv2'
+    return $ SMaybe.maybe
+      sTrue
+      (\v2 -> (v21 .>= 0) .=> (v2 .>= 0))
+      mv2'
+
+test4 :: IO ThmResult
+test4 = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    k <- forall "k"
+    constrain $ update (modify k 2) m1 m2
+    v1 <- forall "v1"
     constrain $ hasVal k v1 m1
-    m2 <- forall_
+    v2 <- forall "v2"
     constrain $ hasVal k v2 m2
-    constrain $ update (modify k (-3)) m1 m2
-    return $ v2 .>= 4
+    return $ v2 .== (v1 + 4)
+
+test5 :: IO ThmResult
+test5 = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    k <- forall "k"
+    v1 <- forall "v1"
+    constrain $ hasVal k v1 m1
+    v2 <- forall "v2"
+    constrain $ hasVal k v2 m2
+    return $ (v1 .== v2)

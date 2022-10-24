@@ -9,6 +9,7 @@ let i =
   }
 
 let hasVal = lib.mkfun i "hasVal"
+let identity = lib.mkfun i "identity"
 let match = lib.mkfun i "match"
 let member = lib.mkfun i "member"
 let modify = lib.mkfun i "modify"
@@ -48,4 +49,9 @@ in
   (=>
     (and (distinct k1 k2) (${update} (${modify} k1 f1) m1 m2))
     (${match} k2 m1 m2))))
+''
+
+++ ''
+(assert (forall (${qk1})
+  (= (${modify} k1 0) ${identity})))
 ''

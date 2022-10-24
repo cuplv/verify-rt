@@ -75,12 +75,34 @@ let baseAxioms =
       (= (${member} k1 m1) (${member} k1 m2))))))
 ''
 
--- Equivalence from matching on all keys
+-- These are just simpler statements of the previous...
 ++ ''
-(assert (forall (${qm1} ${qm2})
-  (= (= m1 m2)
-     (forall (${qk1}) (${match} k1 m1 m2)))))
+(assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+  (=>
+    (${match} k1 m1 m2)
+    (= (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2)))))
+
+(assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+  (=>
+    (and (${hasVal} k1 v1 m1) (${hasVal} k1 v1 m2))
+    (${match} k1 m1 m2))))
+
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (=>
+    (and (not (${member} k1 m1)) (not (${member} k1 m2)))
+    (${match} k1 m1 m2))))
 ''
+    
+
+-- This is not necessary for any verifiable tests, and seems to slow
+-- down falsifiable tests:
+
+-- -- Equivalence from matching on all keys
+-- ++ ''
+-- (assert (forall (${qm1} ${qm2})
+--   (= (= m1 m2)
+--      (forall (${qk1}) (${match} k1 m1 m2)))))
+-- ''
 
 -- Matching is reflexive (same as previous axiom?)
 ++ ''

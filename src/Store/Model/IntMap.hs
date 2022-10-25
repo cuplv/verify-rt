@@ -171,17 +171,23 @@ instance Avs (G2 a) where
 
 mapAsCap :: SBV SMap.M -> SBV SMap.M -> SBV SMap.M -> Symbolic SBool
 mapAsCap g s1 s2 = do
-  k <- forall_
-  constrain $ SMap.member k s1 .<=> SMap.member k s2
-  v1 <- forall_
-  constrain $ SMap.member k s1 .=> SMap.hasVal k v1 s1
-  v2 <- forall_
-  constrain $ SMap.member k s2 .=> SMap.hasVal k v2 s2
-  x <- SMap.lookup k g
-  return $ SMap.member k s1 .=> SMaybe.maybe
-    sTrue
-    (\n -> v1 - n .<= v2)
-    x
+  return $ SMap.mapBound g s1 s2
+
+testMapAsCap = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall_
+    m2 <- forall_
+    k <- forall_
+    -- k2 <- forall_
+    v <- forall_
+    g <- forall_
+    constrain $ SMap.member k g .&& SMap.hasVal k 0 g
+    constrain =<< mapAsCap g m1 m2
+    constrain $ SMap.member k m1 .&& SMap.hasVal k 1 m1
+    constrain $ SMap.member k m2 .&& SMap.hasVal k v m2
+    return $ v .>= 1
 
 instance Grant (G2 a) where
   type GUpd (G2 a) = Upd a

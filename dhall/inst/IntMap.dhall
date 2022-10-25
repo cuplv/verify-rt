@@ -19,11 +19,13 @@ let update = lib.mkfun i "update"
 let valUpdate = lib.mkfun i "valUpdate"
 let diffMap = lib.mkfun i "diffMap"
 let totalSum = lib.mkfun i "totalSum"
+let mapBound = lib.mkfun i "mapBound"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
 let qv1 = "(v1 ${i.val})"
 let qv2 = "(v2 ${i.val})"
+let qv3 = "(v3 ${i.val})"
 let qm1 = "(m1 ${i.map})"
 let qm2 = "(m2 ${i.map})"
 let qm3 = "(m3 ${i.map})"
@@ -91,4 +93,19 @@ in
     (and (${totalSum} m1 v1) (${totalSum} m1 v2))
     (= v1 v2))))
 ''
-    
+
+-- Define mapBound (could also define using offset)
+++ ''
+(assert (forall (${qm1} ${qm2} ${qm3} ${qk1} ${qv1} ${qv2} ${qv3})
+  (=>
+    (and
+      (${mapBound} m1 m2 m3)
+      (${hasVal} k1 v1 m1)
+      (${hasVal} k1 v2 m2)
+      (${hasVal} k1 v3 m3))
+    (<= (- v2 v1) v3))))
+(assert (forall (${qm1} ${qm2} ${qm3} ${qk1})
+  (=>
+    (${mapBound} m1 m2 m3)
+    (= (${member} k1 m2) (${member} k1 m3)))))
+''

@@ -14,6 +14,7 @@ import Transact
 import qualified Data.Map as Map
 import Data.SBV
 import Data.SBV.Maybe
+import qualified Data.SBV.Maybe as SMaybe
 import Data.SBV.Tuple
 
 type Key = Int
@@ -168,12 +169,24 @@ data G2 a
 instance Avs (G2 a) where
   type Rep (G2 a) = (SMap.M, SMap.M)
 
+mapAsCap :: SBV SMap.M -> SBV SMap.M -> SBV SMap.M -> Symbolic SBool
+mapAsCap g s1 s2 = do
+  k <- forall_
+  constrain $ SMap.member k s1 .<=> SMap.member k s2
+  v1 <- forall_
+  constrain $ SMap.member k s1 .=> SMap.hasVal k v1 s1
+  v2 <- forall_
+  constrain $ SMap.member k s2 .=> SMap.hasVal k v2 s2
+  x <- SMap.lookup k g
+  return $ SMap.member k s1 .=> SMaybe.maybe
+    sTrue
+    (\n -> v1 - n .<= v2)
+    x
+
 instance Grant (G2 a) where
   type GUpd (G2 a) = Upd a
-  readG _ g s1 s2 = do
-    undefined
-  writeG _ g s1 s2 = do
-    undefined
+  readG _ g s1 s2 = mapAsCap (_1 g) s1 s2
+  writeG _ g = mapAsCap (_2 g)
   useG = undefined
 
 witness2 :: (G2 a, Upd a)

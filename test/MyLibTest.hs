@@ -94,7 +94,7 @@ intMapTests = testGroup "IntMap"
   ,testCase "IntMap badTakeStock1" $
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.badTakeStock1 IMap.nonNegative)
-       (CheckResult ModelFail ThmSuccess) -- because key grants infinite subtr.
+       (CheckResult TimeOutFail ThmSuccess) -- because key grants infinite subtr.
   ,testCase "IntMap badTakeStock2" $
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.badTakeStock2 IMap.nonNegative)
@@ -113,7 +113,7 @@ tpccTests = testGroup "TPC-C Simple"
   ,testCase "Simple newOrder superStrict" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.superStrict)
-      (CheckResult TimeOutFail ThmSuccess)
+      (CheckResult ModelFail ThmSuccess)
   ]
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()

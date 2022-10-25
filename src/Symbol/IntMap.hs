@@ -67,6 +67,9 @@ seq = uninterpret $ fname "seq"
 offset :: SBV K -> SBV F -> SBV M -> SBV M -> SBool
 offset = uninterpret $ fname "offset"
 
+diffMap :: SBV M -> SBV M -> SBV M -> SBool
+diffMap = uninterpret $ fname "diffMap"
+
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "IntMapAxioms" ss
@@ -89,6 +92,7 @@ addAxioms' ss = do
     .|| sJust u .== sJust u
   constrain $
     offset k 1 m m .== offset k 1 m m
+    .|| diffMap m m m .== diffMap m m m
 
   -- constrain $
   --   member k m

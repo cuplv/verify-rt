@@ -18,7 +18,7 @@ type Transact a g w r
 type TransactComp g w r
   = Transact (Context g, w) g w r
 
-timeout = 1000
+timeout = 2000
 
 tup2l1
   :: (Avs a, Avs w, Avs r, Grant g1, Grant g2)

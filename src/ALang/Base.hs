@@ -92,6 +92,12 @@ eform2
   -> ALang t a d
 eform2 m a1 a2 = (a1 &&& a2) >>> m
 
+unEform2
+  :: (Avs a, Avs b, Avs c)
+  => (ALang t (a,b) a -> ALang t (a,b) b -> ALang t (a,b) c)
+  -> ALang t (a,b) c
+unEform2 f = f tup2g1 tup2g2
+
 -- Bools
 
 andAllA :: (Avs a) => [Fun a Bool] -> ALang t a Bool

@@ -16,22 +16,22 @@ type StockG = IMap.G1 ()
 takeZeroStock :: (Avs a) => Transact a StockG (Int) Int
 takeZeroStock ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
-  intMapLift k1 Int.takeStock ctx (ca 0)
+  intMapKey k1 Int.takeStock ctx (ca 0)
 
 takeStock :: (Avs a) => Transact a StockG Int Int
 takeStock ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
-  intMapLift k1 Int.takeStock ctx amt
+  intMapKey k1 Int.takeStock ctx amt
 
 badTakeStock1 :: (Avs a) => Transact a StockG Int Int
 badTakeStock1 ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
-  intMapLift k1 Int.badTakeStock ctx amt
+  intMapKey k1 Int.badTakeStock ctx amt
 
 badTakeStock2 :: (Avs a) => Transact a StockG Int Int
 badTakeStock2 ctx amt =
   requireE (deconE $ grantE ctx) $ \_ ->
-  intMapLift (ca 8) Int.takeStock ctx amt
+  intMapKey (ca 8) Int.takeStock ctx amt
 
 nonNegative :: Sy (IMap.Map a) -> Sy (IMap.Map a) -> Symbolic SBool
 nonNegative s1 s2 = do
@@ -54,12 +54,12 @@ nonNegative' x s1 s2 = do
 witness = IMap.witness
 axioms = SIMap.axioms
 
-intMapLift 
+intMapKey
   :: (Avs a, Avs w, Avs r, Avs x)
   => Fun a IMap.Key
   -> Transact a SInt.IntG w r
   -> Transact a (IMap.G1 x) w r
-intMapLift k t ctx a =
+intMapKey k t ctx a =
   requireE (IMap.lookupE k (stateE ctx)) $ \v ->
   tup2' (deconE v) $ \n _ ->
   letb (conE (n &&& SInt.mkUniG)) $ \ctx' ->
@@ -68,3 +68,12 @@ intMapLift k t ctx a =
   returnE (IMap.modify k u &&& b)
 
 test3 = checkWith witness axioms takeStock nonNegative
+
+witness2 = IMap.witness2
+
+intMapAll
+  :: (Avs a, Avs x)
+  => Fun a IMap.Map'
+  -> Transact a SInt.IntG Int Int
+  -> Transact a (IMap.G2 x) IMap.Map' IMap.Map'
+intMapAll = undefined

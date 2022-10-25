@@ -8,6 +8,7 @@ let i =
   , valUpd = "Int"
   }
 
+let empty = lib.mkfun i "empty"
 let hasVal = lib.mkfun i "hasVal"
 let identity = lib.mkfun i "identity"
 let match = lib.mkfun i "match"
@@ -16,6 +17,7 @@ let modify = lib.mkfun i "modify"
 let offset = lib.mkfun i "offset"
 let update = lib.mkfun i "update"
 let valUpdate = lib.mkfun i "valUpdate"
+let diffMap = lib.mkfun i "diffMap"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
@@ -23,6 +25,7 @@ let qv1 = "(v1 ${i.val})"
 let qv2 = "(v2 ${i.val})"
 let qm1 = "(m1 ${i.map})"
 let qm2 = "(m2 ${i.map})"
+let qm3 = "(m3 ${i.map})"
 let qf1 = "(f1 ${i.valUpd})"
 
 in
@@ -54,4 +57,24 @@ in
 ++ ''
 (assert (forall (${qk1})
   (= (${modify} k1 0) ${identity})))
+''
+
+-- Define mapDiff
+++ ''
+(assert (forall (${qk1} ${qm1} ${qm2} ${qm3})
+  (=>
+    (${diffMap} m1 m2 m3)
+    (=>
+      (or (not (${member} k1 m1)) (not (${member} k1 m2)))
+      (not (${member} k1 m3))))))
+
+(assert (forall (${qk1} ${qv1} ${qv2} ${qm1} ${qm2} ${qm3})
+  (=>
+    (and (${diffMap} m1 m2 m3) (${hasVal} k1 v1 m1) (${hasVal} k1 v2 m2))
+    (${hasVal} k1 (- v1 v2) m3))))
+
+(assert (forall (${qm1} ${qm2} ${qm3})
+  (=>
+    (and (${diffMap} m1 m2 m3) (or (${empty} m1) (${empty} m2)))
+    (${empty} m3))))
 ''

@@ -138,6 +138,14 @@ let baseAxioms =
     (exists (${qv1}) (${hasVal} k1 v1 m1)))))
 ''
 
+-- Not member implies not hasVal
+++ ''
+(assert (forall (${qk1} ${qv1} ${qm1})
+  (=>
+    (not (${member} k1 m1))
+    (not (${hasVal} k1 v1 m1)))))
+''
+
 -- hasVal is unique
 ++ ''
 (assert (forall (${qk1} ${qv1} ${qv2} ${qm1})

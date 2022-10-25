@@ -6,6 +6,7 @@ module ALang
   ( ALang
   , NoFx
   , Fun
+  , Fun2
   , noFx
   , runFun
   , symbolize

@@ -40,7 +40,9 @@ instance (Avs a) => AData (Val a) where
       return $ tuple (a,v))
     (\(Val a b) -> (a,b))
 
-data Map a = Map (Map.Map Key (Val a))
+data Map a = Map (Map.Map Key (Val a)) deriving (Show,Eq,Ord)
+
+type Map' = Map ()
 
 instance Avs (Map a) where
   type Rep (Map a) = SMap.M
@@ -156,3 +158,96 @@ lookupE = eform2 $ ArrF
 
 witness :: (G1 a, Upd a)
 witness = (undefined, undefined)
+
+data G2 a
+  = G2 { g2Read :: Map ()
+       , g2Write :: Map ()
+       }
+  deriving (Show,Eq,Ord)
+
+instance Avs (G2 a) where
+  type Rep (G2 a) = (SMap.M, SMap.M)
+
+instance Grant (G2 a) where
+  type GUpd (G2 a) = Upd a
+  readG _ g s1 s2 = do
+    undefined
+  writeG _ g s1 s2 = do
+    undefined
+  useG = undefined
+
+witness2 :: (G2 a, Upd a)
+witness2 = (undefined, undefined)
+
+memSubSet :: (Avs a) => ALang t a Map' -> ALang t a Map' -> ALang t a Bool
+memSubSet = eform2 $ ArrF
+  (\a -> do
+    k <- forall_
+    constrain $ SMap.member k (_1 a)
+    return $ SMap.member k (_2 a))
+  undefined
+
+testMemSubSet = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall "m1"
+    constrain $ SMap.empty m1
+    m2 <- forall "m2"
+    k <- forall_
+    v <- forall_
+    constrain $ SMap.singleton k v m2
+    r <- symbolize (unEform2 memSubSet) (tuple (m1,m2))
+    return r
+
+meetIntMaps 
+  :: (Avs a)
+  => Fun2 Int Int Int
+  -> ALang t a Map' 
+  -> ALang t a Map'
+  -> ALang t a Map'
+meetIntMaps f = eform2 $ ArrP
+  (\a m3 -> pure $ SMap.diffMap (_1 a) (_2 a) m3)
+  -- (\a -> do
+  --   let m1 = _1 a
+  --       m2 = _2 a
+  --   k <- forall_
+  --   v1 <- forall_
+  --   constrain $ SMap.member k m1 .=> SMap.hasVal k v1 m1
+  --   v2 <- forall_
+  --   constrain $ SMap.member k m2 .=> SMap.hasVal k v2 m2
+  --   v3' <- symbolize (unEform2 f) (tuple (v1,v2))
+  --   m3 <- forall_
+  --   constrain $ ite
+  --     (SMap.member k m1 .&& SMap.member k m2)
+  --     (SMap.hasVal k v3' m3)
+  --     (sNot $ SMap.member k m3)
+  --   return m3)
+  undefined
+
+testIntMaps1 = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall "m1"
+    constrain $ SMap.empty m1
+    m2 <- forall "m2"
+    k <- forall_
+    v <- forall_
+    constrain $ SMap.singleton k v m2
+    m3 <- symbolize (unEform2 $ meetIntMaps (eform2 tup2g1)) (tuple (m1,m2))
+    return $ m1 .== m3
+
+testIntMaps2 = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    k <- forall_
+    v1 <- forall_
+    v2 <- forall_
+    constrain $ SMap.singleton k v1 m1
+    constrain $ SMap.singleton k v2 m2
+    m3 <- symbolize (unEform2 $ meetIntMaps (eform2 tup2g1)) (tuple (m1,m2))
+    return $ SMap.hasVal k (v1 - v2) m3

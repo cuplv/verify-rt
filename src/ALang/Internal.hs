@@ -54,6 +54,8 @@ noFx a = case a of
 
 type Fun a b = ALang NoFx a b
 
+type Fun2 a b c = Fun (a,b) a -> Fun (a,b) b -> Fun (a,b) c
+
 runFun :: Fun a b -> a -> b
 runFun m = case m of
   ASequenceLR ml mr -> runFun mr . runFun ml

@@ -101,16 +101,16 @@ intMapTests = testGroup "IntMap"
        checkTO -- no clear reason why this must time out...
   ]
 
-tpccTests = testGroup "TPC-C"
-  [testCase "TPC-C Simple" $
+tpccTests = testGroup "TPC-C Simple"
+  [testCase "Simple newOrder tpccSpec" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.tpccSpec)
       checkSuccess
-  ,testCase "TPC-C Simple tooStrict" $
+  ,testCase "Simple newOrder tooStrict" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.tooStrict)
       checkSuccess
-  ,testCase "TPC-C Simple superStrict" $
+  ,testCase "Simple newOrder superStrict" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.superStrict)
       (CheckResult TimeOutFail ThmSuccess)

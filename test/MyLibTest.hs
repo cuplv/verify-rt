@@ -17,7 +17,7 @@ tests = testGroup "Tests"
   [ intTests
   , maybeMapTests
   , intMapTests
-  -- , tpccTests
+  , tpccTests
   ]
 
 intTests = testGroup "Int"

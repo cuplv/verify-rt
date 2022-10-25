@@ -181,10 +181,14 @@ let baseAxioms =
 
 -- identity and seq
 ++ ''
-(assert (forall (${qu1})
+(assert (forall (${qu1} ${qu2})
   (and
-    (${seq} ${identity} u1 u1)
-    (${seq} u1 ${identity} u1))))
+    (=>
+      (${seq} ${identity} u1 u2)
+      (= u1 u2))
+    (=>
+      (${seq} u1 ${identity} u2)
+      (= u1 u2)))))
 ''
 
 in { baseAxioms }

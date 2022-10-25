@@ -20,6 +20,7 @@ let valUpdate = lib.mkfun i "valUpdate"
 let diffMap = lib.mkfun i "diffMap"
 let totalSum = lib.mkfun i "totalSum"
 let mapBound = lib.mkfun i "mapBound"
+let mapModify = lib.mkfun i "mapModify"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
@@ -62,6 +63,27 @@ in
   (= (${modify} k1 0) ${identity})))
 ''
 
+-- Define mapModify
+++ ''
+(assert (forall (${qm1} ${qm2} ${qm3} ${qk1} ${qv1} ${qv2})
+  (=>
+    (and
+      (${update} (${mapModify} m1) m2 m3)
+      (${hasVal} k1 v1 m1)
+      (${hasVal} k1 v2 m2))
+    (${hasVal} k1 (+ v1 v2) m3))))
+
+(assert (forall (${qm1} ${qm2} ${qm3} ${qk1})
+  (=>
+    (${update} (${mapModify} m1) m2 m3)
+    (= (${member} k1 m2) (${member} k1 m3)))))
+
+(assert (forall (${qm1})
+  (=
+    (${empty} m1)
+    (= (${mapModify} m1) ${identity}))))
+''
+
 -- Define mapDiff
 ++ ''
 (assert (forall (${qk1} ${qm1} ${qm2} ${qm3})
@@ -82,12 +104,21 @@ in
     (${empty} m3))))
 ''
 
--- Define totalSum
+-- Define totalSum (note, this doesn't take into account missing keys)
 ++ ''
 (assert (forall (${qk1} ${qm1} ${qm2} ${qv1} ${qf1})
   (=>
     (and (${totalSum} m1 v1) (${update} (${modify} k1 f1) m1 m2))
     (${totalSum} m2 (+ v1 f1)))))
+
+(assert (forall (${qm1} ${qm2} ${qm3} ${qv1} ${qv2})
+  (=>
+    (and
+      (${totalSum} m1 v1)
+      (${totalSum} m2 v2)
+      (${update} (${mapModify} m1) m2 m3))
+    (${totalSum} m3 (+ v1 v2)))))
+
 (assert (forall (${qm1} ${qv1} ${qv2})
   (=>
     (and (${totalSum} m1 v1) (${totalSum} m1 v2))

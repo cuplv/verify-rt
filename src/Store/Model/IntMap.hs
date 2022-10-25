@@ -97,6 +97,14 @@ modify = eform2 $ ArrF
   (\a -> pure $ SMap.modify (_1 a) (_2 a))
   undefined
 
+mapModify
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a (Map b)
+  -> ALang t a (Upd c)
+mapModify = eform $ ArrF
+  (\a -> pure $ SMap.mapModify a)
+  undefined
+
 delete' :: (Avs a) => ALang t Key (Upd a)
 delete' = ArrF
   (\a -> pure $ SMap.delete a)

@@ -76,6 +76,9 @@ totalSum = uninterpret $ fname "totalSum"
 mapBound :: SBV M -> SBV M -> SBV M -> SBool
 mapBound = uninterpret $ fname "mapBound"
 
+mapModify :: SBV M -> SBV U
+mapModify = uninterpret $ fname "mapModify"
+
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "IntMapAxioms" ss
@@ -101,6 +104,7 @@ addAxioms' ss = do
     .|| diffMap m m m .== diffMap m m m
     .|| totalSum m v .== totalSum m v
     .|| mapBound m m m .== mapBound m m m
+    .|| mapModify m .== mapModify m
 
   -- constrain $
   --   member k m

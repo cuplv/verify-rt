@@ -43,7 +43,7 @@ maybeMapTests = testGroup "MaybeMap"
   ,testCase "deliverRecord forever" $
     checkTest
       (checkWith MMap.witness MMap.axioms MMap.deliverRecord MMap.foreverEntries)
-      (CheckResult ModelFail ThmSuccess)
+      (CheckResult Falsified Proven)
   ,testCase "deliverRecord ordered" $
     checkTest
       (checkWith MMap.witness MMap.axioms MMap.deliverRecord MMap.orderedEntries)
@@ -92,9 +92,9 @@ intMapTests = testGroup "IntMap"
        (checkWith IMap.witness IMap.axioms IMap.takeZeroStock IMap.nonNegative)
        checkSuccess
   ,testCase "IntMap badTakeStock1" $
-     checkTest
+     checkTest'
        (checkWith IMap.witness IMap.axioms IMap.badTakeStock1 IMap.nonNegative)
-       (CheckResult TimeOutFail ThmSuccess) -- because key grants infinite subtr.
+       (timeOutFalse, proven) -- because key grants infinite subtr.
   ,testCase "IntMap badTakeStock2" $
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.badTakeStock2 IMap.nonNegative)
@@ -113,8 +113,13 @@ tpccTests = testGroup "TPC-C Simple"
   ,testCase "Simple newOrder superStrict" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.superStrict)
-      (CheckResult ModelFail ThmSuccess)
+      (CheckResult Falsified Proven)
   ]
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()
 checkTest c r = c >>= (\r' -> iResult r' @?= r)
+
+checkTest' :: IO (SBVThmResult,SBVThmResult) -> (ResultSpec, ResultSpec) -> IO ()
+checkTest' c (r1,r2) = do
+  CheckResult r1' r2' <- iResult <$> c
+  (r1 r1', r2 r2') @?= (True,True)

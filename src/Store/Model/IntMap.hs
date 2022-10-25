@@ -208,21 +208,6 @@ meetIntMaps
   -> ALang t a Map'
 meetIntMaps f = eform2 $ ArrP
   (\a m3 -> pure $ SMap.diffMap (_1 a) (_2 a) m3)
-  -- (\a -> do
-  --   let m1 = _1 a
-  --       m2 = _2 a
-  --   k <- forall_
-  --   v1 <- forall_
-  --   constrain $ SMap.member k m1 .=> SMap.hasVal k v1 m1
-  --   v2 <- forall_
-  --   constrain $ SMap.member k m2 .=> SMap.hasVal k v2 m2
-  --   v3' <- symbolize (unEform2 f) (tuple (v1,v2))
-  --   m3 <- forall_
-  --   constrain $ ite
-  --     (SMap.member k m1 .&& SMap.member k m2)
-  --     (SMap.hasVal k v3' m3)
-  --     (sNot $ SMap.member k m3)
-  --   return m3)
   undefined
 
 testIntMaps1 = do
@@ -251,3 +236,31 @@ testIntMaps2 = do
     constrain $ SMap.singleton k v2 m2
     m3 <- symbolize (unEform2 $ meetIntMaps (eform2 tup2g1)) (tuple (m1,m2))
     return $ SMap.hasVal k (v1 - v2) m3
+
+testTotalSum = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    v <- forall_
+    constrain $ SMap.update SMap.identity m1 m2
+    return $
+      SMap.totalSum m1 v .<=> SMap.totalSum m2 v
+
+testTotalSum2 = do
+  ss <- loadAxioms SMap.axioms
+  proveWith (z3 {verbose = True, satTrackUFs = False}) $ do
+    applyAxioms SMap.axioms ss
+    m1 <- forall "m1"
+    m2 <- forall "m2"
+    m3 <- forall "m3"
+    k1 <- forall_
+    k2 <- forall_
+    v1 <- forall "sum1"
+    v2 <- forall "sum2"
+    constrain $ SMap.update (SMap.modify k1 3) m1 m2
+    constrain $ SMap.update (SMap.modify k2 2) m2 m3
+    return $
+      (SMap.totalSum m1 v1 .&& SMap.totalSum m3 v2)
+      .=> (v1 + 5 .== v2)

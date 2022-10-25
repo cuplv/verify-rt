@@ -75,9 +75,9 @@ trueThm t =
 type SBVThmResult = ThmResult
 
 data ThmResult'
-  = ThmSuccess
-  | ModelFail
-  | TimeOutFail
+  = Proven
+  | Falsified
+  | TimeOut
   deriving (Show,Eq,Ord)
 
 data CheckResult
@@ -86,20 +86,31 @@ data CheckResult
                 }
   deriving (Show,Eq,Ord)
 
-checkSuccess = CheckResult ThmSuccess ThmSuccess
+checkSuccess = CheckResult Proven Proven
 
-checkFail = CheckResult ModelFail ModelFail
+checkFail = CheckResult Falsified Falsified
 
-checkTO = CheckResult TimeOutFail TimeOutFail
+checkTO = CheckResult TimeOut TimeOut
 
 iResult :: (ThmResult, ThmResult) -> CheckResult
 iResult (a,b) =
   let f x = case x of
-          (ThmResult (Unknown _ UnknownTimeOut)) -> TimeOutFail
-          (ThmResult (Satisfiable _ _)) -> ModelFail
-          (ThmResult (Unsatisfiable _ _)) -> ThmSuccess
+          (ThmResult (Unknown _ UnknownTimeOut)) -> TimeOut
+          (ThmResult (Satisfiable _ _)) -> Falsified
+          (ThmResult (Unsatisfiable _ _)) -> Proven
           _ -> error $ "Unhandled ThmResult: " ++ show x
   in CheckResult (f a) (f b)
+
+type ResultSpec = ThmResult' -> Bool
+
+proven :: ResultSpec
+proven = (== Proven)
+
+falsified :: ResultSpec
+falsified = (== Falsified)
+
+timeOutFalse :: ResultSpec
+timeOutFalse r = r == Falsified || r == TimeOut
 
 checkWith
   :: (Grant g, Avs w, Avs r)

@@ -9,13 +9,40 @@ import Transact
 import Data.SBV
 import qualified Data.SBV.Maybe as SMaybe
 
+type CustomerId = Int
 type MMap = MMap.Map
+type MapG = MMap.G1
 type MapG' = MMap.G1 String String
 type MapU' = MMap.Upd String String
 
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
-addRecord :: (Avs a) => Transact a MapG' Int ()
+addRecord'
+  :: (Avs a) 
+  => Transact a (MapG String (CustomerId,Int)) (CustomerId,Int) ()
+addRecord' ctx cfg =
+  tup2' cfg $ \customer amt ->
+  -- Extract the key from the grant.  When the grant holds a key, it
+  -- means we have the exclusive permission to insert/modify/delete on
+  -- that key.  If the grant is empty, we stop here and cancel the
+  -- transaction.
+  requireE (deconE $ grantE ctx) $ \key ->
+  -- Check the that this key has not already been used in the state.
+  -- If it has, we stop here and cancel the transaction.
+  assertA (notE $ MMap.memberE key (stateE ctx)) $
+  -- Our update inserts a string, based on the order amount, into
+  -- the table using the provided key.
+  let v = conE (nothingE &&& (customer &&& amt))
+      upd = MMap.insert key v
+  -- The output is a pair: our update, and the transaction's return
+  -- value.  This transaction only returns a () unit value.
+  in returnE (upd &&& unitE)
+
+-- Given an amount-subtracted Int, insert a record of that order in
+-- the order table.
+addRecord 
+  :: (Avs a) 
+  => Transact a MapG' Int ()
 addRecord ctx amt =
   -- Extract the key from the grant.  When the grant holds a key, it
   -- means we have the exclusive permission to insert/modify/delete on
@@ -27,15 +54,11 @@ addRecord ctx amt =
   assertA (notE $ MMap.memberE key (stateE ctx)) $
   -- Our update inserts a string, based on the order amount, into
   -- the table using the provided key.
-  let v = conE (nothingE &&& makeRecord amt)
+  let v = conE (nothingE &&& (funE amt show))
       upd = MMap.insert key v
   -- The output is a pair: our update, and the transaction's return
   -- value.  This transaction only returns a () unit value.
   in returnE (upd &&& unitE)
-
-  -- The record is simply a string message including the amount.
-  where makeRecord amt = funE amt $ \n ->
-          "Order for " ++ show n ++ " units."
 
 -- Uses key given by user, with no guarantee that it has not been used
 -- in the map already.
@@ -57,10 +80,15 @@ addRecordBad ctx cfg =
           "Order for " ++ show n ++ " units."
 
 -- Update the delivery info for an order record.
-deliverRecord :: (Avs a) => Transact a MapG' String ()
-deliverRecord ctx deliv =
+-- Return value is (CustomerId, charge amt)
+deliverRecord 
+  :: (Avs a) 
+  => Transact a (MapG String (Int,Int)) (Int,String) (Int,Int)
+deliverRecord ctx cfg =
+  tup2' cfg $ \orderId deliv ->
   -- Require an exclusive key.
   requireE (deconE $ grantE ctx) $ \key ->
+  assertA (key $== orderId) $
   -- Get that key's existing value (must be present).
   requireE (MMap.lookupE key (stateE ctx)) $ \val ->
   -- Unpack value into delivery info and order info.
@@ -71,7 +99,7 @@ deliverRecord ctx deliv =
   -- previously existing order information.
   let v = conE (justE deliv &&& order)
       upd = MMap.insert key v
-  in returnE (upd &&& unitE)
+  in returnE (upd &&& order)
 
 -- Spec for record table: no inserted record is ever deleted or
 -- modified.  For complete application, we will also want to allow

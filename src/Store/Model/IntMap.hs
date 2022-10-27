@@ -302,6 +302,11 @@ testIntMaps2 = do
     m3 <- symbolize (unEform2 $ diffMap) (tuple (m1,m2))
     return $ SMap.hasVal k (v1 - v2) m3
 
+totalSum :: (Avs a, Avs b) => ALang t a (Map b) -> ALang t a Int
+totalSum = eform $ ArrP
+  (\a b -> return $ SMap.totalSum a b)
+  undefined
+
 testTotalSum = do
   ss <- loadAxioms SMap.axioms
   proveWith (z3 {verbose = True, satTrackUFs = False}) $ do

@@ -17,6 +17,13 @@ tup2Spec :: (SymVal s1, SymVal s2) => (Binr (SBV s1), Binr (SBV s2)) -> Binr (SB
 tup2Spec (p1,p2) = \a b ->
   (.&&) <$> p1 (_1 a) (_1 b) <*> p2 (_2 a) (_2 b)
 
+tup3Spec :: (SymVal s1, SymVal s2, SymVal s3) => (Binr (SBV s1), Binr (SBV s2), Binr (SBV s3)) -> Binr (SBV (s1,s2,s3))
+tup3Spec (p1,p2,p3) = \a b -> do
+  r1 <- p1 (_1 a) (_1 b)
+  r2 <- p2 (_2 a) (_2 b)
+  r3 <- p3 (_3 a) (_3 b)
+  return $ r1 .&& r2 .&& r3
+
 gPrePost
   :: (Grant g)
   => g

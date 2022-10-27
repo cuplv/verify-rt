@@ -23,6 +23,17 @@ takeStock ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
   intMapKey k1 Int.takeStock ctx amt
 
+-- Given (CustomerId, amt), add the amt to that entry (requiring that
+-- the entry exists). Return the observed resulting balance.
+addBalance :: (Avs a) => Transact a (IMap.G1 ()) (Int,Int) Int
+addBalance = undefined
+
+-- Given (CustomerId, amt), subtract the amt from that entry
+-- (requiring that the entry exists, and that the resulting balance is
+-- not less than 0). Return the observed resulting balance.
+subBalance :: (Avs a) => Transact a (IMap.G1 ()) (Int,Int) Int
+subBalance = undefined
+
 badTakeStock1 :: (Avs a) => Transact a StockG Int Int
 badTakeStock1 ctx amt =
   requireE (deconE $ grantE ctx) $ \k1 ->
@@ -73,16 +84,17 @@ witness2 = IMap.witness2
 
 takeStockMulti
   :: (Avs a)
-  => Transact a (IMap.G2 ()) IMap.Map' IMap.Map'
-takeStockMulti ctx amts =
+  => Transact a (IMap.G2 ()) (Int,IMap.Map') (Int,Int)
+takeStockMulti ctx cfg =
+  tup2' cfg $ \a amts ->
   assertA (amts `IMap.geq` ca 0) $
   -- assertA (ctx `IMap.atLeast` amts) $
   assertA (ctx `IMap.canSub` amts) $
-  returnE (IMap.mapModify amts &&& amts)
+  returnE (IMap.mapModify amts &&& (a &&& IMap.totalSum amts))
 
 takeStockMultiBad
   :: (Avs a)
-  => Transact a (IMap.G2 ()) IMap.Map' IMap.Map'
+  => Transact a (IMap.G2 ()) IMap.Map' Int
 takeStockMultiBad ctx amts =
   assertA (amts `IMap.geq` ca 0) $
   -- Whoops, we are merely checking whether the currently visible
@@ -90,4 +102,8 @@ takeStockMultiBad ctx amts =
   -- interference.
   assertA (stateE ctx `IMap.geqMap` amts) $
   assertA (ctx `IMap.canSub` amts) $
-  returnE (IMap.mapSubtract amts &&& amts)
+  returnE (IMap.mapSubtract amts &&& IMap.totalSum amts)
+
+type G2 = IMap.G2
+type G1 = IMap.G1
+type Map' = IMap.Map'

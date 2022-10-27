@@ -40,6 +40,36 @@ tup2l2 t ctx a =
   tup2' r $ \u2 b ->
   returnE ((idU &&& u2) &&& b)
 
+tup3l1
+  :: (Avs a, Avs w, Avs r, Grant g1, Grant g2, Grant g3)
+  => Transact a g1 w r
+  -> Transact a (g1,g2,g3) w r
+tup3l1 t ctx a =
+  tup3' (tup3Ctx ctx) $ \ctx1 _ _ ->
+  requireE (t ctx1 a) $ \r ->
+  tup2' r $ \u1 b ->
+  returnE ((mktup3 u1 idU idU) &&& b)
+
+tup3l2
+  :: (Avs a, Avs w, Avs r, Grant g1, Grant g2, Grant g3)
+  => Transact a g2 w r
+  -> Transact a (g1,g2,g3) w r
+tup3l2 t ctx a =
+  tup3' (tup3Ctx ctx) $ \_ ctx2 _ ->
+  requireE (t ctx2 a) $ \r ->
+  tup2' r $ \u2 b ->
+  returnE ((mktup3 idU u2 idU) &&& b)
+
+tup3l3
+  :: (Avs a, Avs w, Avs r, Grant g1, Grant g2, Grant g3)
+  => Transact a g3 w r
+  -> Transact a (g1,g2,g3) w r
+tup3l3 t ctx a =
+  tup3' (tup3Ctx ctx) $ \_ _ ctx3 ->
+  requireE (t ctx3 a) $ \r ->
+  tup2' r $ \u3 b ->
+  returnE ((mktup3 idU idU u3) &&& b)
+
 seqT
   :: (Avs x, Avs a, Avs b, Avs c, Grant g)
   => GUpd g

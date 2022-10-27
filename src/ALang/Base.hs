@@ -92,6 +92,15 @@ eform2
   -> ALang t a d
 eform2 m a1 a2 = (a1 &&& a2) >>> m
 
+eform3 
+  :: (Avs a, Avs b, Avs c, Avs d, Avs e)
+  => ALang t (b,c,d) e
+  -> ALang t a b
+  -> ALang t a c
+  -> ALang t a d
+  -> ALang t a e
+eform3 m a1 a2 a3 = mktup3 a1 a2 a3 >>> m
+
 unEform2
   :: (Avs a, Avs b, Avs c)
   => (ALang t (a,b) a -> ALang t (a,b) b -> ALang t (a,b) c)
@@ -221,6 +230,46 @@ tup22 m f =
   tup2' t1 $ \a b ->
   tup2' t2 $ \c d ->
   f ((a,b), (c,d))
+
+tup3'
+  :: (Avs a, Avs b, Avs c, Avs d, Avs x)
+  => ALang t x (a,b,c)
+  -> (ALang t x a -> ALang t x b -> ALang t x c -> ALang t x d)
+  -> ALang t x d
+tup3' m f = f (m >>> tup3g1) (m >>> tup3g2) (m >>> tup3g3)
+
+tup32
+  :: (Avs a, Avs b, Avs c, Avs d, Avs e, Avs f, Avs g, Avs x)
+  => ALang t x ((a,b),(c,d),(e,f))
+  -> (((ALang t x a, ALang t x b), (ALang t x c, ALang t x d), (ALang t x e, ALang t x f)) 
+      -> ALang t x g)
+  -> ALang t x g
+tup32 m ff =
+  tup3' m $ \t1 t2 t3 ->
+  tup2' t1 $ \a b ->
+  tup2' t2 $ \c d ->
+  tup2' t3 $ \e f ->
+  ff ((a,b), (c,d), (e,f))
+
+tup23
+  :: (Avs a, Avs b, Avs c, Avs d, Avs e, Avs f, Avs g, Avs x)
+  => ALang t x ((a,b,c),(d,e,f))
+  -> (((ALang t x a, ALang t x b, ALang t x c), (ALang t x d, ALang t x e, ALang t x f)) 
+      -> ALang t x g)
+  -> ALang t x g
+tup23 m ff =
+  tup2' m $ \t1 t2 ->
+  tup3' t1 $ \a b c ->
+  tup3' t2 $ \d e f ->
+  ff ((a,b,c), (d,e,f))
+
+mktup3
+  :: (Avs a, Avs b, Avs c, Avs d)
+  => ALang t a b
+  -> ALang t a c
+  -> ALang t a d
+  -> ALang t a (b,c,d)
+mktup3 b c d = ((b &&& c) &&& d) >>> tup2t3
 
 tup2g1 :: (Avs a, Avs b) => ALang t (a,b) a
 tup2g1 = ArrF (return . _1) fst

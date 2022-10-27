@@ -59,6 +59,21 @@ instance (Update a, Update b) => Update (a,b) where
     eform2 (applyU aw) ua sa
     &&& eform2 (applyU bw) ub sb
 
+instance (Update a, Update b, Update c) => Update (a,b,c) where
+  type UState (a,b,c) = (UState a, UState b, UState c)
+  mkIdU = mktup3 mkIdU mkIdU mkIdU
+  seqU (aw,bw,cw) =
+    tup2 $ \u1 u2 ->
+    tup3' u1 $ \a1 b1 c1 ->
+    tup3' u2 $ \a2 b2 c2 ->
+    mktup3 (seqE aw a1 a2) (seqE bw b1 b2) (seqE cw c1 c2)
+  applyU (aw,bw,cw) =
+    tup23 idA $ \((ua,ub,uc), (sa,sb,sc)) ->
+    mktup3
+      (eform2 (applyU aw) ua sa)
+      (eform2 (applyU bw) ub sb)
+      (eform2 (applyU cw) uc sc)
+
 class (Avs g, Avs (GState g), Update (GUpd g)) => Grant g where
   type GUpd g
   readG :: g -> Sy g -> Sy (GState g) -> Sy (GState g) -> Symbolic SBool
@@ -83,6 +98,20 @@ instance (Grant a, Grant b) => Grant (a,b) where
       bothA 
       (eform2 (useG wa) ua sa) 
       (eform2 (useG wb) ub sb)
+
+instance (Grant a, Grant b, Grant c) => Grant (a,b,c) where
+  type GUpd (a,b,c) = (GUpd a, GUpd b, GUpd c)
+  readG (aw,bw,cw) g s1 s2 = do
+    a <- readG aw (_1 g) (_1 s1) (_1 s2) 
+    b <- readG bw (_2 g) (_2 s1) (_2 s2)
+    c <- readG cw (_3 g) (_3 s1) (_3 s2)
+    return (a .&& b .&& c)
+  writeG (aw,bw,cw) g s1 s2 = do
+    a <- writeG aw (_1 g) (_1 s1) (_1 s2) 
+    b <- writeG bw (_2 g) (_2 s1) (_2 s2) 
+    c <- writeG cw (_3 g) (_3 s1) (_3 s2) 
+    return (a .&& b .&& c)
+  useG = undefined
 
 data Context g
   = Context { ctxState :: GState g
@@ -130,3 +159,14 @@ tup2Ctx
   -> ALang t a (Context g1, Context g2)
 tup2Ctx m = tup22 (m >>> deconA) $ \((s1,s2),(g1,g2)) ->
   eform conA (s1 &&& g1) &&& eform conA (s2 &&& g2)
+
+tup3Ctx 
+  :: (Avs a, Grant g1, Grant g2, Grant g3) 
+  => ALang t a (Context (g1,g2,g3)) 
+  -> ALang t a (Context g1, Context g2, Context g3)
+tup3Ctx m = tup23 (m >>> deconA) $ \((s1,s2,s3),(g1,g2,g3)) ->
+  undefined
+  -- mktup3
+  --   (eform conA (s1 &&& g1))
+  --   (eform conA (s2 &&& g2))
+  --   (eform conA (s3 &&& g3))

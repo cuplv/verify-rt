@@ -21,6 +21,7 @@ let diffMap = lib.mkfun i "diffMap"
 let totalSum = lib.mkfun i "totalSum"
 let mapBound = lib.mkfun i "mapBound"
 let mapModify = lib.mkfun i "mapModify"
+let mapLowerBound = lib.mkfun i "mapLowerBound"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
@@ -75,6 +76,13 @@ in
 
 (assert (forall (${qm1} ${qm2} ${qm3} ${qk1})
   (=>
+    (and
+      (${update} (${mapModify} m1) m2 m3)
+      (not (${member} k1 m1)))
+    (${match} k1 m2 m3))))
+
+(assert (forall (${qm1} ${qm2} ${qm3} ${qk1})
+  (=>
     (${update} (${mapModify} m1) m2 m3)
     (= (${member} k1 m2) (${member} k1 m3)))))
 
@@ -84,7 +92,7 @@ in
     (= (${mapModify} m1) ${identity}))))
 ''
 
--- Define mapDiff
+-- Define diffMap
 ++ ''
 (assert (forall (${qk1} ${qm1} ${qm2} ${qm3})
   (=>
@@ -139,4 +147,12 @@ in
   (=>
     (${mapBound} m1 m2 m3)
     (= (${member} k1 m2) (${member} k1 m3)))))
+''
+
+-- Define mapLowerBound
+++ ''
+(assert (forall (${qk1} ${qv1} ${qv2} ${qm1})
+  (=>
+    (and (${mapLowerBound} v2 m1) (${hasVal} k1 v1 m1))
+    (>= v1 v2))))
 ''

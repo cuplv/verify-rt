@@ -48,8 +48,10 @@ type Map' = Map ()
 instance Avs (Map a) where
   type Rep (Map a) = SMap.M
 
-empty :: (Avs a) => ALang t a (Map b)
-empty = undefined
+empty :: (Avs a) => ALang t a Map'
+empty = ArrP
+  (\_ b -> pure $ SMap.empty b)
+  undefined
 
 singleton :: (Avs a) => ALang t a (Key, Val b) -> ALang t a (Map b)
 singleton = undefined
@@ -177,9 +179,18 @@ data G2 a
 instance Avs (G2 a) where
   type Rep (G2 a) = (SMap.M, SMap.M)
 
-mapAsCap :: SBV SMap.M -> SBV SMap.M -> SBV SMap.M -> Symbolic SBool
+instance AData (G2 a) where
+  type Content (G2 a) = (Map', Map')
+  conA = ArrF
+    pure
+    (\(a,b) -> G2 a b)
+  deconA = ArrF
+    pure
+    (\(G2 a b) -> (a,b))
+
+mapAsCap :: SBV SMap.M -> SBV SMap.M -> SBV SMap.M -> SBool
 mapAsCap g s1 s2 = do
-  return $ SMap.mapBound g s1 s2
+  SMap.mapBound g s1 s2
 
 testMapAsCap = do
   ss <- loadAxioms SMap.axioms
@@ -192,15 +203,29 @@ testMapAsCap = do
     v <- forall_
     g <- forall_
     constrain $ SMap.member k g .&& SMap.hasVal k 0 g
-    constrain =<< mapAsCap g m1 m2
+    constrain $ mapAsCap g m1 m2
     constrain $ SMap.member k m1 .&& SMap.hasVal k 1 m1
     constrain $ SMap.member k m2 .&& SMap.hasVal k v m2
     return $ v .>= 1
 
 instance Grant (G2 a) where
   type GUpd (G2 a) = Upd a
-  readG _ g s1 s2 = mapAsCap (_1 g) s1 s2
-  writeG _ g = mapAsCap (_2 g)
+  -- May need to account for negative values in G2
+  readG _ g s1 s2 = return $
+    ite
+      (SMap.mapLowerBound 0 (_1 g))
+      (mapAsCap (_1 g) s1 s2)
+      (s1 .== s2)
+  writeG _ g s1 s2 = do
+    (k,v) <- SMap.anyEntry (_2 g)
+    r1 <- SMap.lookup k s1
+    r2 <- SMap.lookup k s2
+    return $
+      (isJust r1 .<=> isJust r2)
+      .&& (ite
+             (isJust r1 .&& isJust r2 .&& v .>= 0)
+             (SMaybe.fromJust r1 - v .<= SMaybe.fromJust r2)
+             sTrue)
   useG = undefined
 
 witness2 :: (G2 a, Upd a)
@@ -227,13 +252,12 @@ testMemSubSet = do
     r <- symbolize (unEform2 memSubSet) (tuple (m1,m2))
     return r
 
-meetIntMaps 
+diffMap 
   :: (Avs a)
-  => Fun2 Int Int Int
-  -> ALang t a Map' 
+  => ALang t a Map' 
   -> ALang t a Map'
   -> ALang t a Map'
-meetIntMaps f = eform2 $ ArrP
+diffMap = eform2 $ ArrP
   (\a m3 -> pure $ SMap.diffMap (_1 a) (_2 a) m3)
   undefined
 
@@ -247,7 +271,7 @@ testIntMaps1 = do
     k <- forall_
     v <- forall_
     constrain $ SMap.singleton k v m2
-    m3 <- symbolize (unEform2 $ meetIntMaps (eform2 tup2g1)) (tuple (m1,m2))
+    m3 <- symbolize (unEform2 $ diffMap) (tuple (m1,m2))
     return $ m1 .== m3
 
 testIntMaps2 = do
@@ -261,7 +285,7 @@ testIntMaps2 = do
     v2 <- forall_
     constrain $ SMap.singleton k v1 m1
     constrain $ SMap.singleton k v2 m2
-    m3 <- symbolize (unEform2 $ meetIntMaps (eform2 tup2g1)) (tuple (m1,m2))
+    m3 <- symbolize (unEform2 $ diffMap) (tuple (m1,m2))
     return $ SMap.hasVal k (v1 - v2) m3
 
 testTotalSum = do
@@ -291,3 +315,36 @@ testTotalSum2 = do
     return $
       (SMap.totalSum m1 v1 .&& SMap.totalSum m3 v2)
       .=> (v1 + 5 .== v2)
+
+geq
+  :: (Avs a, Avs x) 
+  => ALang t a (Map x) 
+  -> ALang t a Int 
+  -> ALang t a Bool
+geq = eform2 $ ArrF
+  (\a -> pure $ SMap.mapLowerBound (_2 a) (_1 a))
+  undefined
+
+lowerBound :: (Avs a, Avs x) => ALang t a (Context (G2 x)) -> ALang t a Map'
+lowerBound = eform $ ArrP
+  (\a b -> return $ ite
+     (SMap.mapLowerBound 0 (_1 (_2 a)))
+     (SMap.diffMap (_1 a) (_1 (_2 a)) b)
+     (_1 a .== b))
+  undefined
+
+atLeast
+  :: (Avs a, Avs x)
+  => ALang t a (Context (G2 x))
+  -> ALang t a Map'
+  -> ALang t a Bool
+atLeast ctx amts = diffMap (lowerBound ctx) amts `geq` ca 0
+
+canSub
+  :: (Avs a, Avs x)
+  => ALang t a (Context (G2 x))
+  -> ALang t a Map'
+  -> ALang t a Bool
+canSub ctx amts =
+  tup2' (deconE (grantE ctx)) $ \_ w ->
+  diffMap w amts `geq` ca 0

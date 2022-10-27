@@ -71,9 +71,12 @@ test3 = checkWith witness axioms takeStock nonNegative
 
 witness2 = IMap.witness2
 
-intMapAll
-  :: (Avs a, Avs x)
-  => Fun a IMap.Map'
-  -> Transact a SInt.IntG Int Int
-  -> Transact a (IMap.G2 x) IMap.Map' IMap.Map'
-intMapAll = undefined
+takeStockMulti
+  :: (Avs a)
+  => Transact a (IMap.G2 ()) IMap.Map' IMap.Map'
+takeStockMulti ctx amts =
+  letb IMap.empty $ \amts' ->
+  assertA (amts `IMap.geq` ca 0) $
+  assertA (ctx `IMap.atLeast` amts) $
+  assertA (ctx `IMap.canSub` amts) $
+  returnE (IMap.mapModify amts &&& amts)

@@ -99,6 +99,10 @@ intMapTests = testGroup "IntMap"
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.badTakeStock2 IMap.nonNegative)
        checkTO -- no clear reason why this must time out...
+  ,testCase "IntMap takeStockMulti" $
+     checkTest
+       (checkWith IMap.witness2 IMap.axioms IMap.takeStockMulti IMap.nonNegative)
+       checkSuccess
   ]
 
 tpccTests = testGroup "TPC-C Simple"

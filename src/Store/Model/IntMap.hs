@@ -70,9 +70,9 @@ instance Avs (Upd a) where
 instance Update (Upd a) where
   type UState (Upd a) = Map a
   mkIdU = arrC SMap.identity (Upd Map.empty)
-  seqU _ = ArrF
-    undefined
-    -- (\a -> pure $ SMap.seq (_1 a) (_2 a))
+  seqU _ = ArrP
+    -- undefined
+    (\a b -> pure $ SMap.seq (_1 a) (_2 a) b)
     undefined
   applyU _ = ArrP
     (\a b -> pure $ SMap.update (_1 a) (_2 a) b)
@@ -153,13 +153,13 @@ instance Grant (G1 a) where
   readG _ g s1 s2 = do
     return $ Data.SBV.Maybe.maybe
       sTrue
-      (\k -> SMap.match k s1 s2)
+      (\k -> SMap.keyLeq k s1 s2)
       g
   writeG _ g s1 s2 = do
     k1 <- forall_
     return $ Data.SBV.Maybe.maybe
       (s1 .== s2)
-      (\k -> (k ./= k1) .=> SMap.match k1 s1 s2)
+      (\k -> (k ./= k1) .=> SMap.keyLeq k1 s1 s2)
       g
   useG = undefined
 

@@ -165,8 +165,7 @@ tup3Ctx
   => ALang t a (Context (g1,g2,g3)) 
   -> ALang t a (Context g1, Context g2, Context g3)
 tup3Ctx m = tup23 (m >>> deconA) $ \((s1,s2,s3),(g1,g2,g3)) ->
-  undefined
-  -- mktup3
-  --   (eform conA (s1 &&& g1))
-  --   (eform conA (s2 &&& g2))
-  --   (eform conA (s3 &&& g3))
+  mktup3
+    (eform conA (s1 &&& g1))
+    (eform conA (s2 &&& g2))
+    (eform conA (s3 &&& g3))

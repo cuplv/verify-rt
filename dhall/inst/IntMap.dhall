@@ -23,6 +23,7 @@ let mapBound = lib.mkfun i "mapBound"
 let mapModify = lib.mkfun i "mapModify"
 let mapLowerBound = lib.mkfun i "mapLowerBound"
 let mapNegate = lib.mkfun i "mapNegate"
+let keyLeq = lib.mkfun i "keyLeq"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
@@ -167,5 +168,22 @@ in
 (assert (forall (${qk1} ${qm1} ${qm2})
   (=>
     (${mapNegate} m1 m2)
+    (= (${member} k1 m1) (${member} k1 m2)))))
+''
+
+++ ''
+(assert (forall (${qk1} ${qv1} ${qv2} ${qm1} ${qm2})
+  (=>
+    (and
+      (${hasVal} k1 v1 m1)
+      (${hasVal} k1 v2 m2))
+    (= (${keyLeq} k1 m1 m2) (<= v1 v2)))))
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (=>
+    (and (not (${member} k1 m1)) (not (${member} k1 m2)))
+    (${keyLeq} k1 m1 m2))))
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (=>
+    (${keyLeq} k1 m1 m2)
     (= (${member} k1 m1) (${member} k1 m2)))))
 ''

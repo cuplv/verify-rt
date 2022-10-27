@@ -26,13 +26,27 @@ takeStock ctx amt =
 -- Given (CustomerId, amt), add the amt to that entry (requiring that
 -- the entry exists). Return the observed resulting balance.
 addBalance :: (Avs a) => Transact a (IMap.G1 ()) (Int,Int) Int
-addBalance = undefined
+addBalance ctx cfg = 
+  tup2' cfg $ \k amt ->
+  assertA (amt $>= ca 0) $
+  requireE (deconE $ grantE ctx) $ \_ ->
+  requireE (IMap.lookupE k (stateE ctx)) $ \val ->
+  tup2' (deconE val) $ \bal _ ->
+  returnE (IMap.modify k (SInt.addU amt) &&& (bal $+ amt))
 
 -- Given (CustomerId, amt), subtract the amt from that entry
 -- (requiring that the entry exists, and that the resulting balance is
 -- not less than 0). Return the observed resulting balance.
+--
+-- This is just like takeStock, except that we provide a key as input
+-- that must match the capability-supplied key, rather than just
+-- accepting any key.
 subBalance :: (Avs a) => Transact a (IMap.G1 ()) (Int,Int) Int
-subBalance = undefined
+subBalance ctx cfg = 
+  tup2' cfg $ \k amt ->
+  requireE (deconE $ grantE ctx) $ \k1 ->
+  assertA (k $== k1) $
+  intMapKey k1 Int.takeStock ctx amt
 
 badTakeStock1 :: (Avs a) => Transact a StockG Int Int
 badTakeStock1 ctx amt =
@@ -107,3 +121,4 @@ takeStockMultiBad ctx amts =
 type G2 = IMap.G2
 type G1 = IMap.G1
 type Map' = IMap.Map'
+type Upd = IMap.Upd

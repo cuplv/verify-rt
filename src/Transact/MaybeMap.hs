@@ -38,6 +38,29 @@ addRecord' ctx cfg =
   -- value.  This transaction only returns a () unit value.
   in returnE (upd &&& unitE)
 
+-- Uses hard-coded key, rather than one from the context
+addRecordBad'
+  :: (Avs a) 
+  => Transact a (MapG String (CustomerId,Int)) (CustomerId,Int) ()
+addRecordBad' ctx cfg =
+  tup2' cfg $ \customer amt ->
+  -- Extract the key from the grant.  When the grant holds a key, it
+  -- means we have the exclusive permission to insert/modify/delete on
+  -- that key.  If the grant is empty, we stop here and cancel the
+  -- transaction.
+  requireE (deconE $ grantE ctx) $ \key ->
+  -- Check the that this key has not already been used in the state.
+  -- If it has, we stop here and cancel the transaction.
+  assertA (notE $ MMap.memberE key (stateE ctx)) $
+  -- Our update inserts a string, based on the order amount, into
+  -- the table using a hardcoded (unsafe) key.
+  let unsafeKey = ca 1
+      v = conE (nothingE &&& (customer &&& amt))
+      upd = MMap.insert unsafeKey v
+  -- The output is a pair: our update, and the transaction's return
+  -- value.  This transaction only returns a () unit value.
+  in returnE (upd &&& unitE)
+
 -- Given an amount-subtracted Int, insert a record of that order in
 -- the order table.
 addRecord 
@@ -140,3 +163,5 @@ orderedEntries s1 s2 = do
 witness = MMap.witness
 
 axioms = SMMap.axioms
+
+type Upd = MMap.Upd

@@ -5,6 +5,7 @@ import qualified Transact.Int as Int
 import qualified Transact.IntMap as IMap
 import qualified Transact.MaybeMap as MMap
 import qualified Transact.Tpcc.Simple as TpccSimple
+import qualified Transact.Tpcc as Tpcc
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -17,7 +18,8 @@ tests = testGroup "Tests"
   [ intTests
   , maybeMapTests
   , intMapTests
-  , tpccTests
+  , tpccSimpleTests
+  , tpccMainTests
   ]
 
 intTests = testGroup "Int"
@@ -107,9 +109,13 @@ intMapTests = testGroup "IntMap"
      checkTest'
        (checkWith IMap.witness2 IMap.axioms IMap.takeStockMultiBad IMap.nonNegative)
        (timeOutFalse, proven)
+  ,testCase "IntMap addBalance" $
+     checkTest
+       (checkWith IMap.witness IMap.axioms IMap.addBalance IMap.nonNegative)
+       checkSuccess
   ]
 
-tpccTests = testGroup "TPC-C Simple"
+tpccSimpleTests = testGroup "TPC-C Simple"
   [testCase "Simple newOrder tpccSpec" $
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.tpccSpec)
@@ -122,6 +128,25 @@ tpccTests = testGroup "TPC-C Simple"
     checkTest
       (checkWith TpccSimple.witness TpccSimple.axioms TpccSimple.newOrder TpccSimple.superStrict)
       (CheckResult Falsified Proven)
+  ]
+
+tpccMainTests = testGroup "TPC-C Main"
+  [testCase "Main newOrder" $
+     checkTest
+       (checkWith Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpec)
+       checkSuccess
+  ,testCase "Main newOrderBad" $
+     checkTest'
+       (checkWith Tpcc.witness Tpcc.axioms Tpcc.newOrderBad Tpcc.tpccSpec)
+       (timeOutFalse, timeOutFalse)
+  ,testCase "Main deliver" $
+     checkTest
+       (checkWith Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpec)
+       checkSuccess
+  ,testCase "Main payment" $
+     checkTest
+       (checkWith Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpec)
+       checkSuccess
   ]
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()

@@ -85,6 +85,9 @@ mapLowerBound = uninterpret $ fname "mapLowerBound"
 mapNegate :: SBV M -> SBV M -> SBool
 mapNegate = uninterpret $ fname "mapNegate"
 
+keyLeq :: SBV K -> SBV M -> SBV M -> SBool
+keyLeq = uninterpret $ fname "keyLeq"
+
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
   addAxiom "IntMapAxioms" ss
@@ -113,6 +116,7 @@ addAxioms' ss = do
     .|| mapModify m .== mapModify m
     .|| mapLowerBound v m .== mapLowerBound v m
     .|| mapNegate m m .== mapNegate m m
+    .|| keyLeq k m m .== keyLeq k m m
 
 axioms :: Axioms
 axioms = mkAxiomLoader "IntMap" addAxioms'

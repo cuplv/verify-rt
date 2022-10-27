@@ -107,6 +107,20 @@ mapModify = eform $ ArrF
   (\a -> pure $ SMap.mapModify a)
   undefined
 
+mapSubtract
+  :: (Avs a, Avs b, Avs c)
+  => ALang t a (Map b)
+  -> ALang t a (Upd c)
+mapSubtract = mapModify . mapNegate
+
+mapNegate
+  :: (Avs a, Avs b)
+  => ALang t a (Map b)
+  -> ALang t a (Map b)
+mapNegate = eform $ ArrP
+  (\a -> pure . SMap.mapNegate a)
+  (\(Map a) -> Map $ Map.map (\(Val a b) -> Val (negate a) b) a)
+
 delete' :: (Avs a) => ALang t Key (Upd a)
 delete' = ArrF
   (\a -> pure $ SMap.delete a)
@@ -325,6 +339,13 @@ geq = eform2 $ ArrF
   (\a -> pure $ SMap.mapLowerBound (_2 a) (_1 a))
   undefined
 
+geqMap
+  :: (Avs a)
+  => ALang t a Map'
+  -> ALang t a Map'
+  -> ALang t a Bool
+geqMap m1 m2 = diffMap m1 m2 `geq` ca 0
+
 lowerBound :: (Avs a, Avs x) => ALang t a (Context (G2 x)) -> ALang t a Map'
 lowerBound = eform $ ArrP
   (\a b -> return $ ite
@@ -338,7 +359,7 @@ atLeast
   => ALang t a (Context (G2 x))
   -> ALang t a Map'
   -> ALang t a Bool
-atLeast ctx amts = diffMap (lowerBound ctx) amts `geq` ca 0
+atLeast ctx amts = lowerBound ctx `geqMap` amts
 
 canSub
   :: (Avs a, Avs x)
@@ -348,3 +369,4 @@ canSub
 canSub ctx amts =
   tup2' (deconE (grantE ctx)) $ \_ w ->
   diffMap w amts `geq` ca 0
+

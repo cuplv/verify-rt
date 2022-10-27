@@ -103,6 +103,10 @@ intMapTests = testGroup "IntMap"
      checkTest
        (checkWith IMap.witness2 IMap.axioms IMap.takeStockMulti IMap.nonNegative)
        checkSuccess
+  ,testCase "IntMap takeStockMultiBad" $
+     checkTest'
+       (checkWith IMap.witness2 IMap.axioms IMap.takeStockMultiBad IMap.nonNegative)
+       (timeOutFalse, proven)
   ]
 
 tpccTests = testGroup "TPC-C Simple"

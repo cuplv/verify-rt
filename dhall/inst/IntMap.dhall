@@ -22,6 +22,7 @@ let totalSum = lib.mkfun i "totalSum"
 let mapBound = lib.mkfun i "mapBound"
 let mapModify = lib.mkfun i "mapModify"
 let mapLowerBound = lib.mkfun i "mapLowerBound"
+let mapNegate = lib.mkfun i "mapNegate"
 
 let qk1 = "(k1 ${i.key})"
 let qk2 = "(k2 ${i.key})"
@@ -155,4 +156,16 @@ in
   (=>
     (and (${mapLowerBound} v2 m1) (${hasVal} k1 v1 m1))
     (>= v1 v2))))
+''
+
+-- Define mapNegate
+++ ''
+(assert (forall (${qk1} ${qv1} ${qm1} ${qm2})
+  (=>
+    (and (${mapNegate} m1 m2) (${hasVal} k1 v1 m1))
+    (${hasVal} k1 (- 0 v1) m2))))
+(assert (forall (${qk1} ${qm1} ${qm2})
+  (=>
+    (${mapNegate} m1 m2)
+    (= (${member} k1 m1) (${member} k1 m2)))))
 ''

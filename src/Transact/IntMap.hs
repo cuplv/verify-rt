@@ -75,8 +75,19 @@ takeStockMulti
   :: (Avs a)
   => Transact a (IMap.G2 ()) IMap.Map' IMap.Map'
 takeStockMulti ctx amts =
-  letb IMap.empty $ \amts' ->
   assertA (amts `IMap.geq` ca 0) $
-  assertA (ctx `IMap.atLeast` amts) $
+  -- assertA (ctx `IMap.atLeast` amts) $
   assertA (ctx `IMap.canSub` amts) $
   returnE (IMap.mapModify amts &&& amts)
+
+takeStockMultiBad
+  :: (Avs a)
+  => Transact a (IMap.G2 ()) IMap.Map' IMap.Map'
+takeStockMultiBad ctx amts =
+  assertA (amts `IMap.geq` ca 0) $
+  -- Whoops, we are merely checking whether the currently visible
+  -- stocks are sufficient, without also considering remote
+  -- interference.
+  assertA (stateE ctx `IMap.geqMap` amts) $
+  assertA (ctx `IMap.canSub` amts) $
+  returnE (IMap.mapSubtract amts &&& amts)

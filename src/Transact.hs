@@ -131,6 +131,13 @@ iResult (a,b) =
           _ -> error $ "Unhandled ThmResult: " ++ show x
   in CheckResult (f a) (f b)
 
+iResult1 :: ThmResult -> ThmResult'
+iResult1 x = case x of
+  (ThmResult (Unknown _ UnknownTimeOut)) -> TimeOut
+  (ThmResult (Satisfiable _ _)) -> Falsified
+  (ThmResult (Unsatisfiable _ _)) -> Proven
+  _ -> error $ "Unhandled ThmResult: " ++ show x
+
 type ResultSpec = ThmResult' -> Bool
 
 proven :: ResultSpec
@@ -141,6 +148,40 @@ falsified = (== Falsified)
 
 timeOutFalse :: ResultSpec
 timeOutFalse r = r == Falsified || r == TimeOut
+
+checkSpec
+  :: (Grant g, Avs w, Avs r)
+  => (g, GUpd g)
+  -> Axioms -- domain-specific axioms
+  -> TransactComp g w r
+  -> Spec g
+  -> IO ThmResult'
+checkSpec (gw,uw) ax f p = do
+  ss <- loadAxioms ax
+  r <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut timeout
+    applyAxioms ax ss
+    conf <- forall "config"
+    let t = transactS uw (f tup2g1 tup2g2) conf
+    tsSpec gw t p
+  return $ iResult1 r
+
+checkUpdate
+  :: (Grant g, Avs w, Avs r)
+  => (g, GUpd g)
+  -> Axioms -- domain-specific axioms
+  -> TransactComp g w r
+  -> Spec g
+  -> IO ThmResult'
+checkUpdate (gw,uw) ax f p = do
+  ss <- loadAxioms ax
+  r <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut timeout
+    applyAxioms ax ss
+    conf <- forall "config"
+    let t = transactS uw (f tup2g1 tup2g2) conf
+    tsWrite gw t p
+  return $ iResult1 r
 
 checkWith
   :: (Grant g, Avs w, Avs r)

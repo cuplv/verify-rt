@@ -1,11 +1,14 @@
 module Main (main) where
 
+import ALang
+import Store.Model
 import Transact
 import qualified Transact.Int as Int
 import qualified Transact.IntMap as IMap
 import qualified Transact.MaybeMap as MMap
 import qualified Transact.Tpcc.Simple as TpccSimple
 import qualified Transact.Tpcc as Tpcc
+import Verify
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -130,24 +133,22 @@ tpccSimpleTests = testGroup "TPC-C Simple"
       (CheckResult Falsified Proven)
   ]
 
-tpccMainTests = testGroup "TPC-C Main"
-  [testCase "Main newOrder" $
-     checkTest
-       (checkWith Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpec)
-       checkSuccess
-  ,testCase "Main newOrderBad" $
-     checkTest'
-       (checkWith Tpcc.witness Tpcc.axioms Tpcc.newOrderBad Tpcc.tpccSpec)
-       (timeOutFalse, timeOutFalse)
-  ,testCase "Main deliver" $
-     checkTest
-       (checkWith Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpec)
-       checkSuccess
-  ,testCase "Main payment" $
-     checkTest
-       (checkWith Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpec)
-       checkSuccess
-  ]
+tpccMainTests = testGroup "TPC-C Main" $
+  checkTests "Main newOrder" 
+    Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpec 
+    (proven,proven)
+  ++
+  checkTests "Main newOrderBad" 
+    Tpcc.witness Tpcc.axioms Tpcc.newOrderBad Tpcc.tpccSpec 
+    (timeOutFalse,timeOutFalse)
+  ++
+  checkTests "Main deliver" 
+    Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpec 
+    (proven,proven)
+  ++
+  checkTests "Main payment" 
+    Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpec 
+    (proven,proven)
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()
 checkTest c r = c >>= (\r' -> iResult r' @?= r)
@@ -156,3 +157,13 @@ checkTest' :: IO (SBVThmResult,SBVThmResult) -> (ResultSpec, ResultSpec) -> IO (
 checkTest' c (r1,r2) = do
   CheckResult r1' r2' <- iResult <$> c
   (r1 r1', r2 r2') @?= (True,True)
+
+checkTests :: (Grant g, Avs w, Avs r) => String -> (g, GUpd g) -> Axioms -> TransactComp g w r -> Spec g -> (ResultSpec, ResultSpec) -> [TestTree]
+checkTests name w ax f p (sp,up) =
+  [testCase (name ++ " (Spec)") $
+     do r <- checkSpec w ax f p
+        sp r @?= True
+  ,testCase (name ++ " (Update)") $
+     do r <- checkUpdate w ax f p
+        sp r @?= True
+  ]

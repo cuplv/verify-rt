@@ -7,17 +7,19 @@ import Transact
 import qualified Transact.Int as Int
 import qualified Transact.IntMap as IMap
 import qualified Transact.MaybeMap as MMap
-import Verify (tup3Spec)
+import Verify (tup3Spec,trueSpec)
 
 type CustomerId = Int
 type StockId = Int
 type OrderId = Int
+type S = (IMap.Map', MMap.MMap String (CustomerId,Int), IMap.Map')
 type G = 
   (IMap.G2 () -- Stock table
   ,MMap.MapG String (CustomerId,Int) -- Order table
   ,IMap.G1 () -- Customer table
   )
 
+tpccSpec :: Binr (Sy S)
 tpccSpec = tup3Spec 
   -- No stock entry can go negative.
   (IMap.nonNegative
@@ -26,6 +28,15 @@ tpccSpec = tup3Spec
   ,MMap.orderedEntries
   -- Customer balance does not go negative.
   ,IMap.nonNegative)
+
+tpccSpecA :: Binr (Sy S)
+tpccSpecA = tup3Spec (IMap.nonNegative, trueSpec, trueSpec)
+
+tpccSpecB :: Binr (Sy S)
+tpccSpecB = tup3Spec (trueSpec, MMap.orderedEntries, trueSpec)
+
+tpccSpecC :: Binr (Sy S)
+tpccSpecC = tup3Spec (trueSpec, trueSpec, IMap.nonNegative)
 
 -- Take the given amount from the stock field, and record the order in
 -- the record table.  If either sub-transaction fails, the whole

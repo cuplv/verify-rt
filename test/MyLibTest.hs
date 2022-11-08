@@ -23,6 +23,7 @@ tests = testGroup "Tests"
   , intMapTests
   , tpccSimpleTests
   , tpccMainTests
+  , tpccSplitTests
   ]
 
 intTests = testGroup "Int"
@@ -148,6 +149,43 @@ tpccMainTests = testGroup "TPC-C Main" $
   ++
   checkTests "Main payment" 
     Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpec 
+    (proven,proven)
+
+tpccSplitTests = testGroup "TPC-C Split" $
+  checkTests "Split newOrder stock" 
+    Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecA
+    (proven,proven)
+  ++
+  checkTests "Split newOrder orders" 
+    Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecB
+    (proven,proven)
+  ++
+  checkTests "Split newOrder customer" 
+    Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecC
+    (proven,proven)
+  ++  
+  checkTests "Split deliver stock"
+    Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecA
+    (proven,proven)
+  ++  
+  checkTests "Split deliver orders"
+    Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecB
+    (proven,proven)
+  ++  
+  checkTests "Split deliver customer"
+    Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecC
+    (proven,proven)
+  ++
+  checkTests "Split payment stock" 
+    Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecA
+    (proven,proven)
+  ++
+  checkTests "Split payment orders" 
+    Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecB
+    (proven,proven)
+  ++
+  checkTests "Split payment customer" 
+    Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecC
     (proven,proven)
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()

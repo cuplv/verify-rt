@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -274,3 +275,43 @@ instance (Avs a) => Avs (PartG a b) where
 instance (Avc a) => Avc (PartG a b) where
   toRep (PartG a) = toRep a
   repc (PartG a) s = error "Can't implement repc for PartG actually."
+
+instance (Avs a) => AData (PartG a b) where
+  type Content (PartG a b) = a
+  conA = ArrF return PartG
+  deconA = ArrF return (\(PartG a) -> a)
+
+instance Grant (PartG Int Int) where
+  type GUpd (PartG Int Int) = SetUpd (Int,Int)
+  readG _ g s1 s2 = do
+    return $ partLocked g s1 s2
+  writeG _ g s1 s2 = do
+    v <- forall_
+    constrain $ _1 v ./= g
+    return $ SSet.member v s1 .<=> SSet.member v s2
+  useG _ = undefined
+
+partLocked :: SInteger -> SSet (Integer,Integer) -> SSet (Integer,Integer) -> SBool
+partLocked = uninterpret $ "partLocked"
+
+test :: IO ThmResult
+test = do
+  ss <- loadAxioms axioms
+  proveWith (z3 {verbose = True}) $ do
+    applyAxioms axioms ss
+    s1 <- forall "s1"
+    s2 <- forall "s2"
+    constrain $ sNot (SSet.member (tuple (1 :: SInteger,3 :: SInteger)) s1)
+    constrain =<< readG (undefined :: PartG Int Int) 1 s1 s2
+    return $ sNot (SSet.member (tuple (1 :: SInteger,2 :: SInteger)) s2)
+
+addAxioms' :: [String] -> Symbolic ()
+addAxioms' ss = do
+  addAxiom "PartSetAxioms" ss
+  i <- forall_
+  s1 <- forall_
+  s2 <- forall_
+  constrain $ partLocked i s1 s2 .== partLocked i s1 s2
+
+axioms :: Axioms
+axioms = mkAxiomLoader "PartSet" addAxioms'

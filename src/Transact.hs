@@ -133,7 +133,7 @@ iResult (a,b) =
 
 iResult1 :: ThmResult -> ThmResult'
 iResult1 x = case x of
-  (ThmResult (Unknown _ UnknownTimeOut)) -> TimeOut
+  (ThmResult (Unknown _ _)) -> TimeOut
   (ThmResult (Satisfiable _ _)) -> Falsified
   (ThmResult (Unsatisfiable _ _)) -> Proven
   _ -> error $ "Unhandled ThmResult: " ++ show x

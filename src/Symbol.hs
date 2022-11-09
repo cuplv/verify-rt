@@ -112,6 +112,9 @@ instance (Avc a) => Avc [a] where
   repc (a:as) z = let (za,zs) = SL.uncons z
                   in repc a za .&& repc as zs
 
+instance (Avs a, Ord (Rep a)) => Avs (Set a) where
+  type Rep (Set a) = RCSet (Rep a)
+
 data NoRep
 
 mkUninterpretedSort ''NoRep
@@ -165,3 +168,6 @@ loadAxioms = fst
 
 applyAxioms :: Axioms -> [String] -> Symbolic ()
 applyAxioms = snd
+
+noAxioms :: Axioms
+noAxioms = (return [], \_ -> return ())

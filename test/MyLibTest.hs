@@ -6,6 +6,7 @@ import Transact
 import qualified Transact.Int as Int
 import qualified Transact.IntMap as IMap
 import qualified Transact.MaybeMap as MMap
+import qualified Transact.Set as Set
 import qualified Transact.Tpcc.Simple as TpccSimple
 import qualified Transact.Tpcc as Tpcc
 import Verify
@@ -19,6 +20,7 @@ main = defaultMain tests
 tests :: TestTree
 tests = testGroup "Tests"
   [ intTests
+  , setTests
   , maybeMapTests
   , intMapTests
   , tpccSimpleTests
@@ -32,6 +34,39 @@ intTests = testGroup "Int"
   ,testCase "Bad takeStock" $
      checkTest (check Int.witness Int.badTakeStock Int.nonNegative) checkFail
   ]
+
+setTests = testGroup "Set" $
+  checkTests "Good insertLeft"
+    Set.witness2 noAxioms Set.insertLeft (Set.subsetLR')
+    (proven,proven)
+  ++
+  checkTests "Bad insertLeft"
+    Set.witness2 noAxioms Set.badInsertLeft (Set.subsetLR')
+    (falsified, proven)
+  ++
+  checkTests "Good insertRight"
+    Set.witness2 noAxioms Set.insertRight (Set.subsetLR')
+    (proven,proven)
+  ++
+  checkTests "Bad insertRight"
+    Set.witness2 noAxioms Set.capFailInsertRight (Set.subsetLR')
+    (proven,falsified)
+  ++
+  checkTests "Good deleteLeft"
+    Set.witness2 noAxioms Set.deleteLeft (Set.subsetLR')
+    (proven,proven)
+  ++
+  checkTests "Bad deleteLeft"
+    Set.witness2 noAxioms Set.capFailDeleteLeft (Set.subsetLR')
+    (proven,falsified)
+  ++
+  checkTests "Good deleteRight"
+    Set.witness2 noAxioms Set.deleteRight (Set.subsetLR')
+    (proven,proven)
+  ++
+  checkTests "Bad deleteRight"
+    Set.witness2 noAxioms Set.badDeleteRight (Set.subsetLR')
+    (falsified,proven)
 
 maybeMapTests = testGroup "MaybeMap"
   [testCase "addRecord forever" $
@@ -203,5 +238,5 @@ checkTests name w ax f p (sp,up) =
         sp r @?= True
   ,testCase (name ++ " (Update)") $
      do r <- checkUpdate w ax f p
-        sp r @?= True
+        up r @?= True
   ]

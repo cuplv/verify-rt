@@ -26,9 +26,11 @@ library
                     , Symbol.Map
                     , Symbol.MaybeMap
                     , Transact
+                    , Transact.Courseware
                     , Transact.Int
                     , Transact.IntMap
                     , Transact.MaybeMap
+                    , Transact.Set
                     , Transact.Tpcc
                     , Transact.Tpcc.Simple
                     , Verify

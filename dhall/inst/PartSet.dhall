@@ -34,6 +34,15 @@ in
 
 ++
 ''
+(assert (forall ((i1 Int) (i2 Int) (s1 ${Set1}) (s2 ${Set2}))
+  (=>
+    (partSubset s1 s2)
+    (partSubset s1 (store s2 (mkSBVTuple2 i1 i2) false)))))
+''
+
+
+++
+''
 (assert (forall ((s1 ${Set1}) (s2 ${Set2}))
   (=>
     (forall ((i1 Int) (i2 Int))
@@ -110,12 +119,12 @@ in
 ''
 
 ++
--- hasPartDiff delete
+-- hasPartDiff delete (fix me)
 ''
 (assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}))
   (=>
     (select s1 (mkSBVTuple2 v k))
-    (partHasDiff k s1 (store s1 (mkSBVTuple2 v k) false) (- 1)))))
+    (partHasDiff k s1 (store s1 (mkSBVTuple2 v k) false) 0))))
 ''
 
 ++

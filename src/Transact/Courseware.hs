@@ -53,7 +53,6 @@ capacityValue s1 s2 = return $
   Set.allHasUB (_2 s1) 30 .=> Set.allHasUB (_2 s1) 30
 
 noDeleteStudent :: Binr (Sy S)
--- noDeleteStudent s1 s2 = return $ sTrue
 noDeleteStudent s1 s2 = Set.subsetLR (_1 s1) (_1 s2)
 
 registerStudent :: (Avs a) => Transact a G StudentId ()
@@ -79,6 +78,13 @@ enroll = seqT
        tup2' a $ \sid _ ->
        assertA (Set.memberE sid (stateE ctx)) $
        returnE (idU &&& ca ()))
+
+unEnroll :: (Avs a) => Transact a G (StudentId,CourseId) ()
+unEnroll = tup2l2 $ \ctx a -> 
+  tup2' a $ \sid cid ->
+  assertA (eform tup3g1 (deconE (grantE ctx)) $== sid) $
+  assertA (eform tup3g2 (deconE (grantE ctx)) $== cid) $
+  returnE (Set.deleteU a &&& ca ())
 
 witness :: (G, GUpd G)
 witness = ((undefined,undefined), (undefined,undefined))

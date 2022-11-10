@@ -40,8 +40,8 @@ in
   (=>
     (and
       (partHasSize k s1 n)
-      (not (select s1 (mkSBVTuple2 k v))))
-    (partHasSize k (store s1 (mkSBVTuple2 k v) true) (+ n 1)))))
+      (not (select s1 (mkSBVTuple2 v k))))
+    (partHasSize k (store s1 (mkSBVTuple2 v k) true) (+ n 1)))))
 ''
 
 ++
@@ -51,6 +51,6 @@ in
   (=>
     (and
       (partHasSize k s1 n)
-      (select s1 (mkSBVTuple2 k v)))
-    (partHasSize k (store s1 (mkSBVTuple2 k v) false) (- n 1)))))
+      (select s1 (mkSBVTuple2 v k)))
+    (partHasSize k (store s1 (mkSBVTuple2 v k) false) (- n 1)))))
 ''

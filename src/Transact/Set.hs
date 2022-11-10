@@ -321,10 +321,10 @@ test = do
     let p4 = sNot $ partSubset (SSet.singleton 2) (SSet.singleton $ tuple (1,2))
     let p5 = partSubset (SSet.singleton 1) s4
              .=> sNot (SSet.member (tuple (2,2)) s4)
-    let p6 = (partHasSize 3 s1 99 .&& sNot (SSet.member (tuple (3,1)) s1))
-             .=> partHasSize 3 (SSet.insert (tuple (3,1)) s1) 100
-    let p7 = (partHasSize 3 s1 99 .&& SSet.member (tuple (3,1)) s1)
-             .=> partHasSize 3 (SSet.delete (tuple (3,1)) s1) 98
+    let p6 = (partHasSize 3 s1 99 .&& sNot (SSet.member (tuple (1,3)) s1))
+             .=> partHasSize 3 (SSet.insert (tuple (1,3)) s1) 100
+    let p7 = (partHasSize 3 s1 99 .&& SSet.member (tuple (1,3)) s1)
+             .=> partHasSize 3 (SSet.delete (tuple (1,3)) s1) 98
     return $ p1 .&& p2 .&& p3 .&& p4 .&& p5 .&& p6 .&& p7
 
 addAxioms' :: [String] -> Symbolic ()

@@ -11,6 +11,7 @@ import qualified Transact.Set as Set
 import Verify (tup3Spec,trueSpec)
 
 import Data.SBV
+import qualified Data.SBV.Maybe as SMaybe
 import qualified Data.SBV.Set as SSet
 import Data.SBV.Tuple
 import Data.Set (Set)
@@ -52,9 +53,20 @@ enrollDomain s1 s2 = do
   let r2 = Set.partSubset (_1 s1) (_3 s1) .=> Set.partSubset (_1 s2) (_3 s2)
   return $ r1 .&& r2
 
-capacity :: Binr (Sy S)
-capacity s1 s2 = do
-  undefined
+capacityValue :: Binr (Sy S)
+capacityValue s1 s2 = IMap.nonNegative (_2 s1) (_2 s2)
+-- capacityValue s1 s2 = do
+--   (k,v1) <- SMap.anyEntry (_2 s1)
+--   mv2 <- SMap.lookup k (_2 s2)
+--   return $ SMaybe.maybe
+--     sTrue
+--     (\v2 -> ((partMapMatch 30 (_3 s1) (_2 s1) .&& v1 .>= 0) )
+--              .=> (partMapMatch 30 (_3 s2) (_2 s2) .&& (v2 .>= 0)))
+--     mv2
+
+capacityMatch :: Binr (Sy S)
+capacityMatch s1 s2 = do
+  return $ partMapMatch 30 (_3 s1) (_2 s1) .=> partMapMatch 30 (_3 s2) (_2 s2)
 
 noDeleteStudent :: Binr (Sy S)
 noDeleteStudent s1 s2 = Set.subsetLR (_1 s1) (_1 s2)
@@ -63,21 +75,37 @@ registerStudent :: (Avs a) => Transact a G StudentId ()
 registerStudent = tup3l1 $ \_ sid -> returnE (Set.insertU sid &&& ca ())
 
 enroll :: (Avs a) => Transact a G (StudentId,CourseId) (Int,Int)
+-- enroll = tup3l2 $ \ctx a ->
+--           tup2' a $ \sid _ ->
+--           letb (IMap.singleton (sid &&& conE (ca 1 &&& ca ()))) $ \m ->
+--           -- Subtract that map from the course capacity map (checking
+--           -- that there is capacity to do so)
+--           IMap.takeStockMulti ctx (ca 1 &&& m)
 enroll = seqT
   seqWitness
+    -- Add entry to enrollment table
     (tup3l3 $ \ctx a ->
-       tup2' a $ \sid cid ->
+       tup2' a $ \sid _ ->
+       -- Check that we have student's enrollment lock
        assertA (deconE (grantE ctx) $== sid) $
-       returnE (Set.insertU (sid &&& cid) &&& a))
+       -- Check that student is not already enrolled in this course.
+       assertA (notE (Set.memberE a (stateE ctx))) $
+       -- Insert, and also pass the (sid,cid) along
+       returnE (Set.insertU a &&& a))
     (seqT
        seqWitness
+       -- Ensure that student exists
        (tup3l1 $ \ctx a ->
           tup2' a $ \sid _ ->
           assertA (Set.memberE sid (stateE ctx)) $
           returnE (idU &&& a))
+       -- Decrement course capacity
        (tup3l2 $ \ctx a ->
           tup2' a $ \sid _ ->
+          -- Construct a singleton map { sid -> 1 }
           letb (IMap.singleton (sid &&& conE (ca 1 &&& ca ()))) $ \m ->
+          -- Subtract that map from the course capacity map (checking
+          -- that there is capacity to do so)
           IMap.takeStockMulti ctx (ca 1 &&& m)))
 
 witness :: (G, GUpd G)
@@ -129,7 +157,9 @@ test = do
     m2' <- forall_
     constrain $ partMapMatch 30 s2 m2
     constrain $ sNot (SSet.member (tuple (1,2)) s2)
-    constrain $ SMap.update (SMap.modify 1 (-1)) m2 m2'
+    mm <- forall_
+    constrain $ SMap.singleton 1 (-1) mm
+    constrain $ SMap.update (SMap.mapModify mm) m2 m2'
     let s2' = SSet.insert (tuple (1,2)) s2
         r2 = partMapMatch 30 s2' m2'
         

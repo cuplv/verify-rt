@@ -9,6 +9,7 @@ let i =
   }
 
 let empty = lib.mkfun i "empty"
+let singleton = lib.mkfun i "singleton"
 let hasVal = lib.mkfun i "hasVal"
 let identity = lib.mkfun i "identity"
 let match = lib.mkfun i "match"
@@ -49,18 +50,19 @@ in
       (${hasVal} k (- n v) m1)))))
 ''
 
-++
-''
-(assert (forall ((n Int) (v Int) (s ${Set2}) ${qm1})
-  (=>
-    (forall ((k Int))
-      (=
-        (partHasSize k s v)
-        (${hasVal} k (- n v) m1)))
-    (partMapMatch n s m1))))
-''
+-- ++
+-- ''
+-- (assert (forall ((n Int) (v Int) (s ${Set2}) ${qm1})
+--   (=>
+--     (forall ((k Int))
+--       (=
+--         (partHasSize k s v)
+--         (${hasVal} k (- n v) m1)))
+--     (partMapMatch n s m1))))
+-- ''
 
 ++
+-- partMapMatch insert
 ''
 (assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}) ${qm1} ${qm2})
   (=>
@@ -72,6 +74,20 @@ in
 ''
 
 ++
+-- partMapMatch insert, mapModify edition
+''
+(assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}) ${qm1} ${qm2} ${qm3})
+  (=>
+    (and
+      (partMapMatch n s1 m1)
+      (${singleton} k (- 1) m3)
+      (${update} (${mapModify} m3) m1 m2)
+      (not (select s1 (mkSBVTuple2 k v))))
+    (partMapMatch n (store s1 (mkSBVTuple2 k v) true) m2))))
+''
+
+++
+-- partMapMatch delete
 ''
 (assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}) ${qm1} ${qm2})
   (=>

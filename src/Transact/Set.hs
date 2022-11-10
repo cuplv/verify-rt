@@ -302,6 +302,29 @@ instance Grant (PartG Int Int) where
     return $ SSet.member v s1 .<=> SSet.member v s2
   useG _ = undefined
 
+data PartG2 = PartG2 Int Int Int deriving (Show,Eq,Ord)
+
+instance Avs PartG2 where
+  type Rep PartG2 = (Integer,Integer,Integer)
+
+instance AData PartG2 where
+  type Content (PartG2) = (Int,Int,Int)
+  conA = ArrF return (\(a,b,c) -> PartG2 a b c)
+  deconA = ArrF return (\(PartG2 a b c) -> (a,b,c))
+
+instance Grant PartG2 where
+  type GUpd (PartG2) = SetUpd (Int,Int)
+  readG _ g s1 s2 = do
+    return $ partLocked (_1 g) s1 s2 
+             .&& (partHasUB (_2 g) s1 (_3 g)
+                  .=> partHasUB (_2 g) s2 (_3 g))
+  writeG _ g s1 s2 = do
+    v <- forall_
+    constrain $ v ./= tuple (_1 g, _2 g)
+    return $ (SSet.member v s1 .<=> SSet.member v s2) 
+             .&& (partHasDiff (_2 g) s1 s2 0 .|| partHasDiff (_2 g) s1 s2 1)
+  useG = undefined
+
 partLocked :: SInteger -> SSet (Integer,Integer) -> SSet (Integer,Integer) -> SBool
 partLocked = uninterpret $ "partLocked"
 
@@ -311,6 +334,14 @@ partSubset = uninterpret $ "partSubset"
 -- First int is partition, second is size
 partHasSize :: SInteger -> SSet (Integer,Integer) -> SInteger -> SBool
 partHasSize = uninterpret $ "partHasSize"
+
+-- First int is partition, second is size
+partHasUB :: SInteger -> SSet (Integer,Integer) -> SInteger -> SBool
+partHasUB = uninterpret $ "partHasUB"
+
+-- First int is partition, second is size
+partHasDiff :: SInteger -> SSet (Integer,Integer) -> SSet (Integer,Integer) -> SInteger -> SBool
+partHasDiff = uninterpret $ "partHasDiff"
 
 test :: IO ThmResult
 test = do
@@ -345,6 +376,8 @@ addAxioms' ss = do
   constrain $ partLocked i s1 s2 .== partLocked i s1 s2
   constrain $ partSubset s3 s2 .== partSubset s3 s2
   constrain $ partHasSize i s1 i .== partHasSize i s1 i
+  constrain $ partHasUB i s1 i .== partHasUB i s1 i
+  constrain $ partHasDiff i s1 s1 i .== partHasDiff i s1 s1 i
 
 axioms :: Axioms
 axioms = mkAxiomLoader "PartSet" addAxioms'

@@ -32,3 +32,25 @@ in
         (select s1 i1)))
     (partSubset s1 s2))))
 ''
+
+++
+-- hasPartSize insert
+''
+(assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}))
+  (=>
+    (and
+      (partHasSize k s1 n)
+      (not (select s1 (mkSBVTuple2 k v))))
+    (partHasSize k (store s1 (mkSBVTuple2 k v) true) (+ n 1)))))
+''
+
+++
+-- hasPartSize delete
+''
+(assert (forall ((n Int) (k Int) (v Int) (s1 ${Set2}))
+  (=>
+    (and
+      (partHasSize k s1 n)
+      (select s1 (mkSBVTuple2 k v)))
+    (partHasSize k (store s1 (mkSBVTuple2 k v) false) (- n 1)))))
+''

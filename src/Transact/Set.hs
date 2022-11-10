@@ -300,6 +300,10 @@ partLocked = uninterpret $ "partLocked"
 partSubset :: SSet Integer -> SSet (Integer,Integer) -> SBool
 partSubset = uninterpret $ "partSubset"
 
+-- First int is partition, second is size
+partHasSize :: SInteger -> SSet (Integer,Integer) -> SInteger -> SBool
+partHasSize = uninterpret $ "partHasSize"
+
 test :: IO ThmResult
 test = do
   ss <- loadAxioms axioms
@@ -317,7 +321,11 @@ test = do
     let p4 = sNot $ partSubset (SSet.singleton 2) (SSet.singleton $ tuple (1,2))
     let p5 = partSubset (SSet.singleton 1) s4
              .=> sNot (SSet.member (tuple (2,2)) s4)
-    return $ p1 .&& p2 .&& p3 .&& p4 .&& p5
+    let p6 = (partHasSize 3 s1 99 .&& sNot (SSet.member (tuple (3,1)) s1))
+             .=> partHasSize 3 (SSet.insert (tuple (3,1)) s1) 100
+    let p7 = (partHasSize 3 s1 99 .&& SSet.member (tuple (3,1)) s1)
+             .=> partHasSize 3 (SSet.delete (tuple (3,1)) s1) 98
+    return $ p1 .&& p2 .&& p3 .&& p4 .&& p5 .&& p6 .&& p7
 
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
@@ -328,6 +336,7 @@ addAxioms' ss = do
   s3 <- forall_
   constrain $ partLocked i s1 s2 .== partLocked i s1 s2
   constrain $ partSubset s3 s2 .== partSubset s3 s2
+  constrain $ partHasSize i s1 i .== partHasSize i s1 i
 
 axioms :: Axioms
 axioms = mkAxiomLoader "PartSet" addAxioms'

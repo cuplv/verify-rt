@@ -69,8 +69,8 @@ in
     (and
       (partMapMatch n s1 m1)
       (${update} (${modify} k (- 1)) m1 m2)
-      (not (select s1 (mkSBVTuple2 k v))))
-    (partMapMatch n (store s1 (mkSBVTuple2 k v) true) m2))))
+      (not (select s1 (mkSBVTuple2 v k))))
+    (partMapMatch n (store s1 (mkSBVTuple2 v k) true) m2))))
 ''
 
 ++
@@ -82,8 +82,8 @@ in
       (partMapMatch n s1 m1)
       (${singleton} k (- 1) m3)
       (${update} (${mapModify} m3) m1 m2)
-      (not (select s1 (mkSBVTuple2 k v))))
-    (partMapMatch n (store s1 (mkSBVTuple2 k v) true) m2))))
+      (not (select s1 (mkSBVTuple2 v k))))
+    (partMapMatch n (store s1 (mkSBVTuple2 v k) true) m2))))
 ''
 
 ++
@@ -94,6 +94,6 @@ in
     (and
       (partMapMatch n s1 m1)
       (${update} (${modify} k 1) m1 m2)
-      (select s1 (mkSBVTuple2 k v)))
-    (partMapMatch n (store s1 (mkSBVTuple2 k v) false) m2))))
+      (select s1 (mkSBVTuple2 v k)))
+    (partMapMatch n (store s1 (mkSBVTuple2 v k) false) m2))))
 ''

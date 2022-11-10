@@ -32,7 +32,7 @@ type G =
    -- app correctness property!)
   (UnCoord (Set.SetUpd StudentId)
    -- Per-course escrow allocations
-  ,IMap.G2 ()
+  ,IMap.G1 ()
    -- Per-student partition locks
   ,Set.PartG StudentId CourseId
   )
@@ -74,7 +74,7 @@ noDeleteStudent s1 s2 = Set.subsetLR (_1 s1) (_1 s2)
 registerStudent :: (Avs a) => Transact a G StudentId ()
 registerStudent = tup3l1 $ \_ sid -> returnE (Set.insertU sid &&& ca ())
 
-enroll :: (Avs a) => Transact a G (StudentId,CourseId) (Int,Int)
+enroll :: (Avs a) => Transact a G (StudentId,CourseId) (Int)
 -- enroll = tup3l2 $ \ctx a ->
 --           tup2' a $ \sid _ ->
 --           letb (IMap.singleton (sid &&& conE (ca 1 &&& ca ()))) $ \m ->
@@ -101,12 +101,16 @@ enroll = seqT
           returnE (idU &&& a))
        -- Decrement course capacity
        (tup3l2 $ \ctx a ->
-          tup2' a $ \sid _ ->
-          -- Construct a singleton map { sid -> 1 }
-          letb (IMap.singleton (sid &&& conE (ca 1 &&& ca ()))) $ \m ->
+          tup2' a $ \_ cid ->
+          -- Construct a singleton map { cid -> 1 }
+          letb (IMap.singleton (cid &&& conE (ca 1 &&& ca ()))) $ \m ->
           -- Subtract that map from the course capacity map (checking
           -- that there is capacity to do so)
-          IMap.takeStockMulti ctx (ca 1 &&& m)))
+          -- IMap.takeStockMulti ctx (ca 1 &&& m)
+          requireE (deconE (grantE ctx)) $ \k ->
+          assertA (k $== cid) $
+          IMap.takeStock ctx (ca 1)
+          ))
 
 witness :: (G, GUpd G)
 witness = ((undefined,undefined,undefined), (undefined,undefined,undefined))
@@ -156,20 +160,20 @@ test = do
     m2 <- forall "m2"
     m2' <- forall_
     constrain $ partMapMatch 30 s2 m2
-    constrain $ sNot (SSet.member (tuple (1,2)) s2)
+    constrain $ sNot (SSet.member (tuple (2,1)) s2)
     mm <- forall_
     constrain $ SMap.singleton 1 (-1) mm
     constrain $ SMap.update (SMap.mapModify mm) m2 m2'
-    let s2' = SSet.insert (tuple (1,2)) s2
+    let s2' = SSet.insert (tuple (2,1)) s2
         r2 = partMapMatch 30 s2' m2'
         
     s3 <- forall "s3"
     m3 <- forall "m3"
     m3' <- forall_
     constrain $ partMapMatch 30 s3 m3
-    constrain $ SSet.member (tuple (1,2)) s3
+    constrain $ SSet.member (tuple (2,1)) s3
     constrain $ SMap.update (SMap.modify 1 1) m3 m3'
-    let s3' = SSet.delete (tuple (1,2)) s3
+    let s3' = SSet.delete (tuple (2,1)) s3
         r3 = partMapMatch 30 s3' m3'
 
     return $ r1 .&& r2 .&& r3

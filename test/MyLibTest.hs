@@ -3,6 +3,7 @@ module Main (main) where
 import ALang
 import Store.Model
 import Transact
+import qualified Transact.Courseware as CW
 import qualified Transact.Int as Int
 import qualified Transact.IntMap as IMap
 import qualified Transact.MaybeMap as MMap
@@ -26,6 +27,7 @@ tests = testGroup "Tests"
   , tpccSimpleTests
   , tpccMainTests
   , tpccSplitTests
+  , coursewareTests
   ]
 
 intTests = testGroup "Int"
@@ -221,6 +223,15 @@ tpccSplitTests = testGroup "TPC-C Split" $
   ++
   checkTests "Split payment customer" 
     Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecC
+    (proven,proven)
+
+coursewareTests = testGroup "Courseware" $
+  checkTests "registerStudent noDeleteStudent"
+    CW.witness CW.axioms CW.registerStudent CW.noDeleteStudent
+    (proven,proven)
+  ++
+  checkTests "enroll enrollDomain"
+    CW.witness CW.axioms CW.enroll CW.enrollDomain
     (proven,proven)
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()

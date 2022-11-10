@@ -16,8 +16,8 @@ import Data.SBV.Tuple
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-subsetLR :: (Avs a, Ord (Rep a)) => a -> Sy (Set a) -> Sy (Set a) -> Symbolic SBool
-subsetLR _ s1 s2 = return $ SSet.isSubsetOf s1 s2
+subsetLR :: Sy (Set Int) -> Sy (Set Int) -> Symbolic SBool
+subsetLR s1 s2 = return $ SSet.isSubsetOf s1 s2
 
 subsetLR' :: Sy (Set Int, Set Int) -> Sy (Set Int, Set Int) -> Symbolic SBool
 subsetLR' s1 s2 = return $
@@ -148,6 +148,9 @@ witness = (undefined, undefined)
 
 witness2 :: ((MultiG Int, MultiG Int), (SetUpd Int, SetUpd Int))
 witness2 = ((undefined, undefined), (undefined, undefined))
+
+witnessP :: (PartG Int Int, SetUpd (Int,Int))
+witnessP = (undefined,undefined)
 
 instance Avs (MultiG a) where
   type Rep (MultiG a) = (Bool, Bool)
@@ -294,6 +297,9 @@ instance Grant (PartG Int Int) where
 partLocked :: SInteger -> SSet (Integer,Integer) -> SSet (Integer,Integer) -> SBool
 partLocked = uninterpret $ "partLocked"
 
+partSubset :: SSet Integer -> SSet (Integer,Integer) -> SBool
+partSubset = uninterpret $ "partSubset"
+
 test :: IO ThmResult
 test = do
   ss <- loadAxioms axioms
@@ -301,9 +307,17 @@ test = do
     applyAxioms axioms ss
     s1 <- forall "s1"
     s2 <- forall "s2"
+    s3 <- forall "s3"
+    s4 <- forall "s4"
     constrain $ sNot (SSet.member (tuple (1 :: SInteger,3 :: SInteger)) s1)
     constrain =<< readG (undefined :: PartG Int Int) 1 s1 s2
-    return $ sNot (SSet.member (tuple (1 :: SInteger,2 :: SInteger)) s2)
+    let p1 = sNot (SSet.member (tuple (1 :: SInteger,3 :: SInteger)) s2)
+    let p2 = partSubset s3 SSet.empty
+    let p3 = partSubset (SSet.singleton 1) (SSet.singleton $ tuple (1,1))
+    let p4 = sNot $ partSubset (SSet.singleton 2) (SSet.singleton $ tuple (1,2))
+    let p5 = partSubset (SSet.singleton 1) s4
+             .=> sNot (SSet.member (tuple (2,2)) s4)
+    return $ p1 .&& p2 .&& p3 .&& p4 .&& p5
 
 addAxioms' :: [String] -> Symbolic ()
 addAxioms' ss = do
@@ -311,7 +325,9 @@ addAxioms' ss = do
   i <- forall_
   s1 <- forall_
   s2 <- forall_
+  s3 <- forall_
   constrain $ partLocked i s1 s2 .== partLocked i s1 s2
+  constrain $ partSubset s3 s2 .== partSubset s3 s2
 
 axioms :: Axioms
 axioms = mkAxiomLoader "PartSet" addAxioms'

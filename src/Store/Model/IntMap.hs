@@ -54,7 +54,9 @@ empty = ArrP
   undefined
 
 singleton :: (Avs a) => ALang t a (Key, Val b) -> ALang t a (Map b)
-singleton = undefined
+singleton = eform $ ArrP
+  (\a b -> pure $ SMap.singleton (_1 a) (_2 a) b)
+  undefined
 
 data Action a
   = Insert (Val a)

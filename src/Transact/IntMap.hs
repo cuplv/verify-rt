@@ -118,6 +118,9 @@ takeStockMultiBad ctx amts =
   assertA (ctx `IMap.canSub` amts) $
   returnE (IMap.mapSubtract amts &&& IMap.totalSum amts)
 
+singleton :: (Avs a) => ALang t a (IMap.Key, IMap.Val b) -> ALang t a (IMap.Map b)
+singleton = IMap.singleton
+
 type G2 = IMap.G2
 type G1 = IMap.G1
 type Map' = IMap.Map'

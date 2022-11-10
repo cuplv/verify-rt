@@ -82,6 +82,17 @@ class (Avs g, Avs (GState g), Update (GUpd g)) => Grant g where
 
 type GState g = UState (GUpd g)
 
+data UnCoord u = UnCoord deriving (Show,Eq,Ord)
+
+instance Avs (UnCoord u) where
+  type Rep (UnCoord u) = ()
+
+instance (Update u) => Grant (UnCoord u) where
+  type GUpd (UnCoord u) = u
+  readG _ _ _ _ = return sTrue
+  writeG _ _ _ _ = return sTrue
+  useG = undefined
+
 instance (Grant a, Grant b) => Grant (a,b) where
   type GUpd (a,b) = (GUpd a, GUpd b)
   readG (aw,bw) g s1 s2 = do

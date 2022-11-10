@@ -87,44 +87,52 @@ memberE = eform2 $ ArrF
   (\(a,b) -> Set.member a b)
 
 data SetUpd a
-  = SetUpd { setUpdInsert :: Set a
-           , setUpdDelete :: Set a
-           }
-  deriving (Show)
+  = SetInsert a
+  | SetDelete a
+  | SetNoOp
+  deriving (Show,Eq,Ord)
 
-instance (Avs a, Ord (Rep a)) => Avs (SetUpd a) where
-  type Rep (SetUpd a) = (RCSet (Rep a), RCSet (Rep a))
+-- data SetUpd a
+--   = SetUpd { setUpdInsert :: Set a
+--            , setUpdDelete :: Set a
+--            }
+--   deriving (Show)
+
+instance (Avs a) => Avs (SetUpd a) where
+  -- type Rep (SetUpd a) = (RCSet (Rep a), RCSet (Rep a))
+  type Rep (SetUpd a) = Maybe (Rep a, Bool)
 
 instance (Avs a, Ord (Rep a)) => AData (SetUpd a) where
-  type Content (SetUpd a) = (Set a, Set a)
-  conA = ArrF return (\(i,d) -> SetUpd i d)
-  deconA = ArrF return (\(SetUpd i d) -> (i,d))
+  type Content (SetUpd a) = Maybe (a,Bool)
+  conA = ArrF return (\m -> case m of
+                              Just (a,True) -> SetInsert a
+                              Just (a,False) -> SetDelete a
+                              Nothing -> SetNoOp)
+  deconA = ArrF return (\u -> case u of
+                                SetInsert a -> Just (a,True)
+                                SetDelete a -> Just (a,False)
+                                SetNoOp -> Nothing)
 
 insertU
   :: (Avs a, Avs b, Ord b, Ord (Rep b))
   => ALang t a b -> ALang t a (SetUpd b)
-insertU e = conE (singletonE e &&& emptyE)
+insertU e = conE (justE (e &&& ca True))
 
 deleteU
   :: (Avs a, Avs b, Ord b, Ord (Rep b))
   => ALang t a b -> ALang t a (SetUpd b)
-deleteU e = conE (emptyE &&& singletonE e)
+deleteU e = conE (justE (e &&& ca False))
 
 instance (Avs a, Ord a, Ord (Rep a)) => Update (SetUpd a) where
   type UState (SetUpd a) = Set a
-  mkIdU = conE (emptyE &&& emptyE)
+  mkIdU = conE nothingE
   seqU _ = unEform2 $ \u1 u2 ->
-    tup2' (deconE u1) $ \i1 d1 ->
-    tup2' (deconE u2) $ \i2 d2 ->
-    letb (unionE i1 i2) $ \i3 ->
-    letb (unionE d1 d2) $ \d3 ->
-    -- Does this matter?
-    letb (differenceE i3 d3) $ \i3 ->
-    conE (i3 &&& d3)
+    iteS (isNothingE (deconE u1)) u2 u1
   applyU _ = unEform2 $ \u s ->
-    tup2' (deconE u) $ \i d ->
-    letb (unionE s i) $ \s ->
-    differenceE s d
+    maybePm 
+      (deconE u)
+      (\a -> tup2' a $ \e b -> iteS b (insertE e s) (deleteE e s))
+      s
 
 {-| A multi-level lock, providing shared-insert, shared-delete, and
   exclusive modes.

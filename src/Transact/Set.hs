@@ -340,6 +340,10 @@ partHasUB :: SInteger -> SSet (Integer,Integer) -> SInteger -> SBool
 partHasUB = uninterpret $ "partHasUB"
 
 -- First int is partition, second is size
+allHasUB :: SSet (Integer,Integer) -> SInteger -> SBool
+allHasUB = uninterpret $ "allHasUB"
+
+-- First int is partition, second is size
 partHasDiff :: SInteger -> SSet (Integer,Integer) -> SSet (Integer,Integer) -> SInteger -> SBool
 partHasDiff = uninterpret $ "partHasDiff"
 
@@ -378,6 +382,7 @@ addAxioms' ss = do
   constrain $ partHasSize i s1 i .== partHasSize i s1 i
   constrain $ partHasUB i s1 i .== partHasUB i s1 i
   constrain $ partHasDiff i s1 s1 i .== partHasDiff i s1 s1 i
+  constrain $ allHasUB s1 i .== allHasUB s1 i
 
 axioms :: Axioms
 axioms = mkAxiomLoader "PartSet" addAxioms'

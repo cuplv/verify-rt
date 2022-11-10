@@ -8,7 +8,7 @@ import qualified Transact.Int as Int
 import qualified Symbol.IntMap as SMap
 import qualified Transact.IntMap as IMap
 import qualified Transact.Set as Set
-import Verify (tup3Spec,trueSpec)
+import Verify (tup2Spec,trueSpec)
 
 import Data.SBV
 import qualified Data.SBV.Maybe as SMaybe
@@ -22,8 +22,6 @@ type S =
    -- Existing students
   (Set StudentId
    -- Existing courses and capacities
-  ,IMap.Map'
-   -- Enrollments
   ,Set (StudentId, CourseId)
   )
 
@@ -31,91 +29,61 @@ type G =
    -- Changes to student table are not coordinated (but are limited by
    -- app correctness property!)
   (UnCoord (Set.SetUpd StudentId)
-   -- Per-course escrow allocations
-  ,IMap.G1 ()
    -- Per-student partition locks
-  ,Set.PartG StudentId CourseId
+  ,Set.PartG2
   )
 
 coursewareSpec :: Binr (Sy S)
 coursewareSpec s1 s2 = do 
-  r1 <- tup3Spec
+  r1 <- tup2Spec
           (Set.subsetLR
-          ,IMap.nonNegative
           ,trueSpec)
           s1 s2
-  let r2 = Set.partSubset (_1 s1) (_3 s1) .=> Set.partSubset (_1 s2) (_3 s2)
+  let r2 = Set.partSubset (_1 s1) (_2 s1) .=> Set.partSubset (_1 s2) (_2 s2)
   return $ r1 .&& r2
 
 enrollDomain :: Binr (Sy S)
 enrollDomain s1 s2 = do
   r1 <- noDeleteStudent s1 s2
-  let r2 = Set.partSubset (_1 s1) (_3 s1) .=> Set.partSubset (_1 s2) (_3 s2)
+  let r2 = Set.partSubset (_1 s1) (_2 s1) .=> Set.partSubset (_1 s2) (_2 s2)
   return $ r1 .&& r2
 
 capacityValue :: Binr (Sy S)
-capacityValue s1 s2 = IMap.nonNegative (_2 s1) (_2 s2)
--- capacityValue s1 s2 = do
---   (k,v1) <- SMap.anyEntry (_2 s1)
---   mv2 <- SMap.lookup k (_2 s2)
---   return $ SMaybe.maybe
---     sTrue
---     (\v2 -> ((partMapMatch 30 (_3 s1) (_2 s1) .&& v1 .>= 0) )
---              .=> (partMapMatch 30 (_3 s2) (_2 s2) .&& (v2 .>= 0)))
---     mv2
-
-capacityMatch :: Binr (Sy S)
-capacityMatch s1 s2 = do
-  return $ partMapMatch 30 (_3 s1) (_2 s1) .=> partMapMatch 30 (_3 s2) (_2 s2)
+capacityValue s1 s2 = return $ 
+  Set.allHasUB (_2 s1) 30 .=> Set.allHasUB (_2 s1) 30
 
 noDeleteStudent :: Binr (Sy S)
+-- noDeleteStudent s1 s2 = return $ sTrue
 noDeleteStudent s1 s2 = Set.subsetLR (_1 s1) (_1 s2)
 
 registerStudent :: (Avs a) => Transact a G StudentId ()
-registerStudent = tup3l1 $ \_ sid -> returnE (Set.insertU sid &&& ca ())
+registerStudent = tup2l1 $ \_ sid -> returnE (Set.insertU sid &&& ca ())
 
-enroll :: (Avs a) => Transact a G (StudentId,CourseId) (Int)
--- enroll = tup3l2 $ \ctx a ->
---           tup2' a $ \sid _ ->
---           letb (IMap.singleton (sid &&& conE (ca 1 &&& ca ()))) $ \m ->
---           -- Subtract that map from the course capacity map (checking
---           -- that there is capacity to do so)
---           IMap.takeStockMulti ctx (ca 1 &&& m)
+enroll :: (Avs a) => Transact a G (StudentId,CourseId) ()
 enroll = seqT
   seqWitness
     -- Add entry to enrollment table
-    (tup3l3 $ \ctx a ->
-       tup2' a $ \sid _ ->
+    (tup2l2 $ \ctx a ->
+       tup2' a $ \sid cid ->
        -- Check that we have student's enrollment lock
-       assertA (deconE (grantE ctx) $== sid) $
+       assertA (eform tup3g1 (deconE (grantE ctx)) $== sid) $
+       -- Check that we have been granted a slot in this course
+       assertA (eform tup3g2 (deconE (grantE ctx)) $== cid) $
+       -- Check the course is not full
+       assertA (eform tup3g3 (deconE (grantE ctx)) $<= ca 29) $
        -- Check that student is not already enrolled in this course.
        assertA (notE (Set.memberE a (stateE ctx))) $
        -- Insert, and also pass the (sid,cid) along
        returnE (Set.insertU a &&& a))
-    (seqT
-       seqWitness
-       -- Ensure that student exists
-       (tup3l1 $ \ctx a ->
-          tup2' a $ \sid _ ->
-          assertA (Set.memberE sid (stateE ctx)) $
-          returnE (idU &&& a))
-       -- Decrement course capacity
-       (tup3l2 $ \ctx a ->
-          tup2' a $ \_ cid ->
-          -- Construct a singleton map { cid -> 1 }
-          letb (IMap.singleton (cid &&& conE (ca 1 &&& ca ()))) $ \m ->
-          -- Subtract that map from the course capacity map (checking
-          -- that there is capacity to do so)
-          -- IMap.takeStockMulti ctx (ca 1 &&& m)
-          requireE (deconE (grantE ctx)) $ \k ->
-          assertA (k $== cid) $
-          IMap.takeStock ctx (ca 1)
-          ))
+    (tup2l1 $ \ctx a ->
+       tup2' a $ \sid _ ->
+       assertA (Set.memberE sid (stateE ctx)) $
+       returnE (idU &&& ca ()))
 
 witness :: (G, GUpd G)
-witness = ((undefined,undefined,undefined), (undefined,undefined,undefined))
+witness = ((undefined,undefined), (undefined,undefined))
 
-seqWitness = (snd Set.witness, snd IMap.witness2, snd Set.witnessP)
+seqWitness = (snd Set.witness, snd Set.witnessP)
 
 partMapMatch :: SInteger -> SSet (Integer,Integer) -> Sy IMap.Map' -> SBool
 partMapMatch = uninterpret $ "partMapMatch"

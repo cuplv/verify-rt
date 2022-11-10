@@ -237,10 +237,6 @@ coursewareTests = testGroup "Courseware" $
   checkTests "enroll capacityValue"
     CW.witness CW.axioms CW.enroll CW.capacityValue
     (proven,proven)
-  ++
-  checkTests "enroll capacityMatch"
-    CW.witness CW.axioms CW.enroll CW.capacityMatch
-    (proven,proven)
 
 checkTest :: IO (SBVThmResult,SBVThmResult) -> CheckResult -> IO ()
 checkTest c r = c >>= (\r' -> iResult r' @?= r)

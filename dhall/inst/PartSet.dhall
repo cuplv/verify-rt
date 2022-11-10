@@ -76,6 +76,19 @@ in
     (partHasUB k (store s1 (mkSBVTuple2 v k) true) (+ n 1)))))
 ''
 
+-- ++
+-- -- allHasUB insert
+-- ''
+-- (assert (forall ((n Int) (k Int) (s1 ${Set2}))
+--   (=>
+--     (allHasUB s1 n)
+--     (partHasUB k s1 n))))
+-- (assert (forall ((n Int) (s1 ${Set2}))
+--   (=>
+--     (forall ((k Int)) (partHasUB k s1 n))
+--     (allHasUB s1 n))))
+-- ''
+
 ++
 -- hasPartUB delete
 ''
@@ -103,4 +116,10 @@ in
   (=>
     (select s1 (mkSBVTuple2 v k))
     (partHasDiff k s1 (store s1 (mkSBVTuple2 v k) false) (- 1)))))
+''
+
+++
+''
+(assert (forall ((k Int) (s1 ${Set2}))
+  (partHasDiff k s1 s1 0)))
 ''

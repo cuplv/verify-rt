@@ -218,6 +218,12 @@ assertNotMember ctx val =
   assertA (notE $ memberE val (stateE ctx)) $
   returnE (idU &&& val)
 
+checkLeft :: (Avs a) => Transact a (MultiG Int, MultiG Int) Int Int
+checkLeft = tup2l1 assertMember
+
+checkRight :: (Avs a) => Transact a (MultiG Int, MultiG Int) Int Int
+checkRight = tup2l2 assertMember
+
 insertLeft
   :: (Avs a)
   => Transact a (MultiG Int, MultiG Int) Int ()

@@ -38,37 +38,39 @@ intTests = testGroup "Int"
   ]
 
 setTests = testGroup "Set" $
-  checkTests "Good insertLeft"
+  checkTests' "Good insertLeft"
     Set.witness2 noAxioms Set.insertLeft (Set.subsetLR')
-    (proven,proven)
   ++
   checkTests "Bad insertLeft"
     Set.witness2 noAxioms Set.badInsertLeft (Set.subsetLR')
     (falsified, proven)
   ++
-  checkTests "Good insertRight"
+  checkTests' "Good insertRight"
     Set.witness2 noAxioms Set.insertRight (Set.subsetLR')
-    (proven,proven)
   ++
   checkTests "Bad insertRight"
     Set.witness2 noAxioms Set.capFailInsertRight (Set.subsetLR')
     (proven,falsified)
   ++
-  checkTests "Good deleteLeft"
+  checkTests' "Good deleteLeft"
     Set.witness2 noAxioms Set.deleteLeft (Set.subsetLR')
-    (proven,proven)
   ++
   checkTests "Bad deleteLeft"
     Set.witness2 noAxioms Set.capFailDeleteLeft (Set.subsetLR')
     (proven,falsified)
   ++
-  checkTests "Good deleteRight"
+  checkTests' "Good deleteRight"
     Set.witness2 noAxioms Set.deleteRight (Set.subsetLR')
-    (proven,proven)
   ++
   checkTests "Bad deleteRight"
     Set.witness2 noAxioms Set.badDeleteRight (Set.subsetLR')
     (falsified,proven)
+  ++
+  checkTests' "checkLeft"
+    Set.witness2 noAxioms Set.checkLeft (Set.subsetLR')
+  ++
+  checkTests' "checkRight"
+    Set.witness2 noAxioms Set.checkRight (Set.subsetLR')
 
 maybeMapTests = testGroup "MaybeMap"
   [testCase "addRecord forever" $
@@ -93,7 +95,10 @@ maybeMapTests = testGroup "MaybeMap"
       checkSuccess
   ]
 
-intMapTests = testGroup "IntMap"
+intMapTests = testGroup "IntMap" $
+  checkTests' "IntMap takeStock"
+    IMap.witness IMap.axioms IMap.takeStock IMap.nonNegative
+  ++
   [testCase "IntMap takeStock" $
      checkTest
        (checkWith IMap.witness IMap.axioms IMap.takeStock IMap.nonNegative)
@@ -189,54 +194,44 @@ tpccMainTests = testGroup "TPC-C Main" $
     (proven,proven)
 
 tpccSplitTests = testGroup "TPC-C Split" $
-  checkTests "Split newOrder stock" 
+  checkTests' "Split newOrder stock" 
     Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecA
-    (proven,proven)
   ++
-  checkTests "Split newOrder orders" 
+  checkTests' "Split newOrder orders" 
     Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecB
-    (proven,proven)
   ++
-  checkTests "Split newOrder customer" 
+  checkTests' "Split newOrder customer" 
     Tpcc.witness Tpcc.axioms Tpcc.newOrder Tpcc.tpccSpecC
-    (proven,proven)
   ++  
-  checkTests "Split deliver stock"
+  checkTests' "Split deliver stock"
     Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecA
-    (proven,proven)
   ++  
-  checkTests "Split deliver orders"
+  checkTests' "Split deliver orders"
     Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecB
-    (proven,proven)
   ++  
   checkTests "Split deliver customer"
     Tpcc.witness Tpcc.axioms Tpcc.deliver Tpcc.tpccSpecC
     (proven,proven)
   ++
-  checkTests "Split payment stock" 
+  checkTests' "Split payment stock" 
     Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecA
-    (proven,proven)
   ++
   checkTests "Split payment orders" 
     Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecB
     (proven,proven)
   ++
-  checkTests "Split payment customer" 
+  checkTests' "Split payment customer" 
     Tpcc.witness Tpcc.axioms Tpcc.payment Tpcc.tpccSpecC
-    (proven,proven)
 
 coursewareTests = testGroup "Courseware" $
-  checkTests "registerStudent noDeleteStudent"
+  checkTests' "registerStudent noDeleteStudent"
     CW.witness CW.axioms CW.registerStudent CW.noDeleteStudent
-    (proven,proven)
   ++
-  checkTests "enroll enrollDomain"
+  checkTests' "enroll enrollDomain"
     CW.witness CW.axioms CW.enroll CW.enrollDomain
-    (proven,proven)
   ++
-  checkTests "enroll capacityValue"
+  checkTests' "enroll capacityValue"
     CW.witness CW.axioms CW.enroll CW.capacityValue
-    (proven,proven)
   ++
   checkTests "unEnroll capacityValue"
     CW.witness CW.axioms CW.unEnroll CW.capacityValue
@@ -258,4 +253,17 @@ checkTests name w ax f p (sp,up) =
   ,testCase (name ++ " (Update)") $
      do r <- checkUpdate w ax f p
         up r @?= True
+  ]
+
+checkTests' :: (Grant g, Avs w, Avs r) => String -> (g, GUpd g) -> Axioms -> TransactComp g w r -> Spec g -> [TestTree]
+checkTests' name w ax f p =
+  [testCase (name ++ " (Spec)") $
+     do r <- checkSpec w ax f p
+        proven r @?= True
+  ,testCase (name ++ " (Update)") $
+     do r <- checkUpdate w ax f p
+        proven r @?= True
+  ,testCase (name ++ " (Combined)") $
+     do r <- checkBoth w ax f p
+        proven r @?= True
   ]

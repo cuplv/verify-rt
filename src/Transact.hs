@@ -183,6 +183,23 @@ checkUpdate (gw,uw) ax f p = do
     tsWrite gw t p
   return $ iResult1 r
 
+checkBoth
+  :: (Grant g, Avs w, Avs r)
+  => (g, GUpd g)
+  -> Axioms -- domain-specific axioms
+  -> TransactComp g w r
+  -> Spec g
+  -> IO ThmResult'
+checkBoth (gw,uw) ax f p = do
+  ss <- loadAxioms ax
+  r <- proveWith z3 {satTrackUFs = False} $ do
+    setTimeOut timeout
+    applyAxioms ax ss
+    conf <- forall "config"
+    let t = transactS uw (f tup2g1 tup2g2) conf
+    (.&&) <$> tsSpec gw t p <*> tsWrite gw t p
+  return $ iResult1 r
+
 checkWith
   :: (Grant g, Avs w, Avs r)
   => (g, GUpd g)
